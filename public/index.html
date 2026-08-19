@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRM Pro — Hệ thống Quản lý Nguồn lực Nhân sự</title>
+  <meta name="description" content="Hệ thống quản lý nhân sự, dự án, phân bổ nguồn lực với AI optimizer và phân tích hiệu suất">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ═══════════════════════ SIDEBAR ═══════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="sidebar__logo">HRM</div>
+      <div class="sidebar__title">
+        <span class="sidebar__name">HRM Pro</span>
+        <span class="sidebar__sub">Quản lý Nguồn lực</span>
+      </div>
+    </div>
+
+    <nav class="sidebar__nav">
+      <span class="sidebar__section-label">Điều hành</span>
+      <a class="nav-item active" data-section="dashboard" id="nav-dashboard">
+        <span class="nav-item__num">01</span>
+        <span class="nav-item__label">Tổng quan</span>
+      </a>
+
+      <span class="sidebar__section-label">Quản lý</span>
+      <a class="nav-item" data-section="projects" id="nav-projects">
+        <span class="nav-item__num">02</span>
+        <span class="nav-item__label">Dự án &amp; Công việc</span>
+      </a>
+      <a class="nav-item" data-section="resources" id="nav-resources">
+        <span class="nav-item__num">03</span>
+        <span class="nav-item__label">Nguồn lực &amp; AI</span>
+      </a>
+
+      <span class="sidebar__section-label">Phân tích</span>
+      <a class="nav-item" data-section="performance" id="nav-performance">
+        <span class="nav-item__num">04</span>
+        <span class="nav-item__label">Hiệu suất</span>
+      </a>
+
+      <!-- Admin only -->
+      <span class="sidebar__section-label admin-only" id="adminSectionLabel" style="display:none">Hệ thống</span>
+      <a class="nav-item admin-only" data-section="accounts" id="nav-accounts" style="display:none">
+        <span class="nav-item__num">05</span>
+        <span class="nav-item__label">Quản lý Tài khoản</span>
+        <span id="approvalBadge" style="margin-left:auto;min-width:18px;height:18px;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px"></span>
+      </a>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="db-status" id="dbStatus">
+        <span class="db-status__dot" id="dbDot"></span>
+        <span id="dbStatusText">Đang kết nối...</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════ MAIN ══════════════════════════════════════ -->
+  <div class="main-content">
+    <header class="top-header">
+      <div class="top-header__left">
+        <h1 class="page-title" id="pageTitle">Tổng quan</h1>
+      </div>
+      <div class="top-header__right">
+        <span class="header-time" id="headerTime"></span>
+
+        <!-- User Profile Dropdown -->
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown__trigger" id="userDropdownTrigger">
+            <div class="user-dropdown__avatar" id="headerAvatar">?</div>
+            <div class="user-dropdown__info">
+              <span class="user-dropdown__name" id="headerUserName">...</span>
+              <span class="user-dropdown__role" id="headerUserRole">...</span>
+            </div>
+            <span class="user-dropdown__caret">&#x25BE;</span>
+          </div>
+          <div class="user-dropdown__menu" id="userDropdownMenu">
+            <div class="user-dropdown__menu-header">
+              <div style="font-size:13px;font-weight:600;color:var(--text-primary)" id="menuUserName">...</div>
+              <div style="font-size:11px;color:var(--text-muted)" id="menuUserEmail">...</div>
+            </div>
+            <div class="user-dropdown__divider"></div>
+            <button class="user-dropdown__item" onclick="showChangePasswordModal()">Đổi mật khẩu</button>
+            <div class="user-dropdown__divider"></div>
+            <button class="user-dropdown__item logout" onclick="logout()">Đăng xuất</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- ══════════ SECTION 1: DASHBOARD ══════════════════════════════ -->
+      <section id="section-dashboard" class="section active">
+        <div class="page-heading">
+          <div>
+            <div class="page-heading__title">Tổng quan hệ thống</div>
+            <div class="page-heading__sub" id="dashboardDate">Hôm nay, ...</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">Làm mới</button>
+        </div>
+        <div class="grid-4 mb-6" id="kpiRow">
+          <div class="kpi-card"><div class="kpi-card__label">Tổng dự án</div><div class="kpi-card__value" id="kpiProjects">--</div><div class="kpi-card__sub"><span class="kpi-card__trend up" id="kpiProjectsActive">--</span> đang hoạt động</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Nhân viên</div><div class="kpi-card__value" id="kpiUsers">--</div><div class="kpi-card__sub"><span class="kpi-card__trend up" id="kpiAvgWorkload">--%</span> workload trung bình</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Tổng công việc</div><div class="kpi-card__value" id="kpiTasks">--</div><div class="kpi-card__sub"><span class="kpi-card__trend up" id="kpiTasksDone">--</span> hoàn thành</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Đang tiến hành</div><div class="kpi-card__value" id="kpiInProgress">--</div><div class="kpi-card__sub"><span class="kpi-card__trend down" id="kpiUrgent">--</span> khẩn cấp</div></div>
+        </div>
+        <div class="grid-3 mb-6">
+          <div class="chart-card"><div class="chart-card__header"><div><div class="chart-card__title">Phân bố trạng thái dự án</div><div class="chart-card__sub">Theo trạng thái hiện tại</div></div></div><div class="chart-wrap" style="height:200px"><canvas id="chartProjectStatus"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card__header"><div><div class="chart-card__title">Workload theo phòng ban</div><div class="chart-card__sub">Trung bình (%)</div></div></div><div class="chart-wrap" style="height:200px"><canvas id="chartDeptWorkload"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card__header"><div><div class="chart-card__title">Giờ làm 7 ngày qua</div><div class="chart-card__sub">Tổng giờ ghi nhận</div></div></div><div class="chart-wrap" style="height:200px"><canvas id="chartWeeklyHours"></canvas></div></div>
+        </div>
+        <div class="grid-2-1">
+          <div class="chart-card"><div class="chart-card__header"><div><div class="chart-card__title">Tiến độ dự án</div></div></div><div class="chart-wrap" style="height:260px"><canvas id="chartProjectProgress"></canvas></div></div>
+          <div class="card"><div class="card__header"><span class="card__title">Hoạt động gần đây</span></div><div class="card__body" style="padding:0"><div id="recentActivity" style="max-height:300px;overflow-y:auto"><div class="loading-spinner"><div class="spinner"></div>Đang tải...</div></div></div></div>
+        </div>
+      </section>
+
+      <!-- ══════════ SECTION 2: PROJECTS & TASKS ════════════════════════ -->
+      <section id="section-projects" class="section">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="projects-tab">Dự án</button>
+          <button class="tab-btn" data-tab="tasks-tab">Kanban Công việc</button>
+        </div>
+        <div class="tab-panel active" id="projects-tab">
+          <div class="page-heading"><div><div class="page-heading__title">Danh sách Dự án</div><div class="page-heading__sub">Quản lý toàn bộ dự án theo phòng ban</div></div><button class="btn btn-primary" id="btnAddProject">Tạo dự án mới</button></div>
+          <div class="filter-bar">
+            <input type="text" placeholder="Tìm kiếm dự án..." id="searchProject">
+            <select id="filterProjectStatus"><option value="">Tất cả trạng thái</option><option value="Planning">Lên kế hoạch</option><option value="Active">Đang hoạt động</option><option value="On Hold">Tạm dừng</option><option value="Completed">Hoàn thành</option></select>
+            <select id="filterProjectDept"><option value="">Tất cả phòng ban</option></select>
+          </div>
+          <div id="projectList" class="project-list"><div class="loading-spinner"><div class="spinner"></div>Đang tải...</div></div>
+        </div>
+        <div class="tab-panel" id="tasks-tab">
+          <div class="page-heading"><div><div class="page-heading__title">Kanban Công việc</div><div class="page-heading__sub">Quản lý tiến độ công việc</div></div><button class="btn btn-primary" id="btnAddTask">Tạo công việc mới</button></div>
+          <div class="filter-bar">
+            <input type="text" placeholder="Tìm kiếm công việc..." id="searchTask">
+            <select id="filterTaskProject"><option value="">Tất cả dự án</option></select>
+            <select id="filterTaskPriority"><option value="">Tất cả ưu tiên</option><option value="Urgent">Khẩn cấp</option><option value="High">Cao</option><option value="Medium">Trung bình</option><option value="Low">Thấp</option></select>
+            <select id="filterTaskAssignee"><option value="">Tất cả nhân viên</option></select>
+            <button class="btn btn-secondary btn-sm" onclick="loadTasks()">Lọc</button>
+          </div>
+          <div class="kanban-board" id="kanbanBoard">
+            <div class="kanban-col kanban-col--not-started"><div class="kanban-col__header"><span class="kanban-col__title">Chưa bắt đầu</span><span class="kanban-col__count" id="countNotStarted">0</span></div><div class="kanban-col__body" id="kanban-not-started"></div></div>
+            <div class="kanban-col kanban-col--in-progress"><div class="kanban-col__header"><span class="kanban-col__title">Đang thực hiện</span><span class="kanban-col__count" id="countInProgress">0</span></div><div class="kanban-col__body" id="kanban-in-progress"></div></div>
+            <div class="kanban-col kanban-col--completed"><div class="kanban-col__header"><span class="kanban-col__title">Hoàn thành</span><span class="kanban-col__count" id="countCompleted">0</span></div><div class="kanban-col__body" id="kanban-completed"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ SECTION 3: RESOURCES & AI ═════════════════════════ -->
+      <section id="section-resources" class="section">
+        <div class="page-heading"><div><div class="page-heading__title">Quản lý Nguồn lực &amp; AI Optimizer</div><div class="page-heading__sub">Hồ sơ nhân sự, workload và phân công thông minh</div></div><div class="flex gap-4"><button class="btn btn-secondary" id="btnAISuggest">AI Gợi ý Phân công</button><button class="btn btn-primary" id="btnAddUser">Thêm nhân viên</button></div></div>
+        <div class="summary-bar" id="resourceSummaryBar">
+          <div class="summary-bar__item"><div class="summary-bar__val" id="sumTotal">--</div><div class="summary-bar__label">Tổng nhân viên</div></div>
+          <div class="summary-bar__item"><div class="summary-bar__val" style="color:var(--green)" id="sumAvailable">--</div><div class="summary-bar__label">Rảnh / Bình thường</div></div>
+          <div class="summary-bar__item"><div class="summary-bar__val" style="color:var(--yellow)" id="sumBusy">--</div><div class="summary-bar__label">Tương đối bận</div></div>
+          <div class="summary-bar__item"><div class="summary-bar__val" style="color:var(--red)" id="sumOverload">--</div><div class="summary-bar__label">Quá tải</div></div>
+        </div>
+        <div class="filter-bar">
+          <input type="text" placeholder="Tìm kiếm nhân viên..." id="searchUser">
+          <select id="filterUserDept"><option value="">Tất cả phòng ban</option></select>
+          <select id="filterWorkload"><option value="">Tất cả mức workload</option><option value="low">Thấp (0–40%)</option><option value="medium">Trung bình (40–70%)</option><option value="high">Cao (70%+)</option></select>
+        </div>
+        <div class="staff-grid" id="staffGrid"><div class="loading-spinner" style="grid-column:1/-1"><div class="spinner"></div>Đang tải...</div></div>
+      </section>
+
+      <!-- ══════════ SECTION 4: PERFORMANCE ════════════════════════════ -->
+      <section id="section-performance" class="section">
+        <div class="page-heading"><div><div class="page-heading__title">Phân tích Hiệu suất Nhân sự</div><div class="page-heading__sub">Composite scoring, radar chart và phân cụm tự động</div></div><div class="flex gap-4"><select id="filterPerfDept" class="form-control" style="min-width:160px;padding:8px 12px"><option value="">Tất cả phòng ban</option></select><button class="btn btn-secondary" id="btnExportCSV">Xuất CSV</button><button class="btn btn-primary" id="btnRefreshPerf">Cập nhật</button></div></div>
+        <div class="grid-4 mb-6">
+          <div class="kpi-card"><div class="kpi-card__label">Điểm trung bình</div><div class="kpi-card__value" id="perfAvgScore">--</div><div class="kpi-card__sub">Composite score</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Hiệu suất cao</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--green)" id="perfHighCount">--</div><div class="kpi-card__sub">Điểm &ge; 8.0</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Trung bình</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--yellow)" id="perfMedCount">--</div><div class="kpi-card__sub">Điểm 6.0 – 7.9</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Cần cải thiện</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--red)" id="perfLowCount">--</div><div class="kpi-card__sub">Điểm &lt; 6.0</div></div>
+        </div>
+        <div id="clusterView"><div class="loading-spinner"><div class="spinner"></div>Đang tính toán...</div></div>
+      </section>
+
+      <!-- ══════════ SECTION 5: ACCOUNTS (Admin only) ═══════════════════ -->
+      <section id="section-accounts" class="section">
+        <div class="page-heading">
+          <div>
+            <div class="page-heading__title">Quản lý Tài khoản</div>
+            <div class="page-heading__sub">Tạo, sửa, phân quyền và kiểm soát tài khoản người dùng</div>
+          </div>
+          <button class="btn btn-primary" id="btnAddAccount">Tạo tài khoản mới</button>
+        </div>
+
+        <!-- Account Stats -->
+        <div class="grid-4 mb-6">
+          <div class="kpi-card"><div class="kpi-card__label">Tổng tài khoản</div><div class="kpi-card__value" id="accTotal">--</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Quản trị viên</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--accent-2)" id="accAdmins">--</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Người dùng</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--cyan)" id="accUsers">--</div></div>
+          <div class="kpi-card"><div class="kpi-card__label">Vô hiệu hoá</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--red)" id="accInactive">--</div></div>
+        </div>
+
+        <!-- Approval Panel (Admin only) -->
+        <div id="approvalPanel" class="mb-6"></div>
+
+        <!-- Phân quyền chi tiết theo bảng -->
+        <div class="card mb-6">
+          <div class="card__header"><span class="card__title">Ma trận phân quyền</span></div>
+          <div class="card__body">
+            <table class="perm-matrix">
+              <thead>
+                <tr>
+                  <th>Chức năng</th>
+                  <th>Quản trị viên</th>
+                  <th>Người dùng</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Xem Dashboard &amp; báo cáo</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Xem danh sách dự án</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Tạo / sửa / xoá dự án</td><td class="perm-yes">Có</td><td class="perm-no">Không</td></tr>
+                <tr><td>Tạo / sửa công việc</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Gửi yêu cầu duyệt hoàn thành task</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Duyệt / từ chối task hoàn thành</td><td class="perm-yes">Có</td><td class="perm-no">Không</td></tr>
+                <tr><td>Ghi nhận giờ làm (Timelog)</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Duyệt / từ chối giờ làm</td><td class="perm-yes">Có</td><td class="perm-no">Không</td></tr>
+                <tr><td>Xem hồ sơ nhân viên &amp; AI Optimizer</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Thêm / sửa / xoá nhân viên</td><td class="perm-yes">Có</td><td class="perm-no">Không</td></tr>
+                <tr><td>Xem báo cáo hiệu suất</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+                <tr><td>Quản lý tài khoản hệ thống</td><td class="perm-yes">Có</td><td class="perm-no">Không</td></tr>
+                <tr><td>Đặt lại mật khẩu người dùng khác</td><td class="perm-yes">Có</td><td class="perm-no">Không</td></tr>
+                <tr><td>Đổi mật khẩu của chính mình</td><td class="perm-yes">Có</td><td class="perm-yes">Có</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="accountsTable"><div class="loading-spinner"><div class="spinner"></div>Đang tải...</div></div>
+      </section>
+
+
+    </div><!-- /page-content -->
+  </div><!-- /main-content -->
+</div><!-- /app-layout -->
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="mainModal">
+    <div class="modal__header"><span class="modal__title" id="modalTitle">Modal</span><button class="modal__close" id="modalClose">&#x2715;</button></div>
+    <div class="modal__body" id="modalBody"></div>
+    <div class="modal__footer" id="modalFooter"><button class="btn btn-secondary" id="modalCancel">Huỷ</button><button class="btn btn-primary" id="modalConfirm">Lưu</button></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+<script src="/js/dashboard.js"></script>
+<script src="/js/projects.js"></script>
+<script src="/js/resources.js"></script>
+<script src="/js/performance.js"></script>
+<script src="/js/accounts.js"></script>
+</body>
+</html>
