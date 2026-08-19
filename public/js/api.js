@@ -1,4 +1,4 @@
-/* ─── api.js — API client với JWT Bearer token ───────────────────────────── */
+﻿/* â”€â”€â”€ api.js â€” API client vá»›i JWT Bearer token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const BASE_URL = '';
 
 function getToken() {
@@ -17,16 +17,16 @@ async function request(method, path, body) {
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(BASE_URL + path, opts);
 
-  // Token hết hạn hoặc chưa đăng nhập → redirect login
+  // Token háº¿t háº¡n hoáº·c chÆ°a Ä‘Äƒng nháº­p â†’ redirect login
   if (res.status === 401) {
     localStorage.removeItem('hrm_token');
     localStorage.removeItem('hrm_user');
     window.location.href = '/login.html';
-    throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+    throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.');
   }
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Lỗi không xác định');
+  if (!res.ok) throw new Error(data.error || 'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh');
   return data;
 }
 
@@ -37,6 +37,7 @@ const api = {
   delete: (path)         => request('DELETE', path),
 
   auth: {
+    register: (data) => fetchApi('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
     login:          (body)   => request('POST', '/api/auth/login', body),
     me:             ()       => request('GET',  '/api/auth/me'),
     changePassword: (body)   => request('PUT',  '/api/auth/change-password', body),
@@ -105,3 +106,4 @@ function toQuery(params) {
   if (!params || !Object.keys(params).length) return '';
   return '?' + new URLSearchParams(params).toString();
 }
+
