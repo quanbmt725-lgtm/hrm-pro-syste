@@ -447,6 +447,8 @@ async function deleteTask(id, name) {
 
 document.getElementById('searchTask')?.addEventListener('input', debounce(loadTasks, 300));
 
+
+
 async function showProjectDetail(id) {
   try {
     modal.setLoading(true);
@@ -464,23 +466,45 @@ async function showProjectDetail(id) {
       </div>
     `).join('') || '<div style="color:var(--text-muted);font-size:13px">Chưa có thành viên</div>';
     
-    let joinLeaveBtn = '';
+    let actionArea = '';
     const cu = state.currentUser;
+
     if (cu && cu.role === 'user' && cu.linkedUser) {
-       const isMember = p.members?.some(m => m._id === cu.linkedUser._id || m === cu.linkedUser._id || m._id === cu.linkedUser || m === cu.linkedUser);
-       if (isMember) {
-           joinLeaveBtn = `<button class="btn btn-danger" onclick="leaveProject('${p._id}')">Rời bỏ dự án</button>`;
-       } else {
-           joinLeaveBtn = `<button class="btn btn-primary" onclick="joinProject('${p._id}')">Tham gia dự án</button>`;
-       }
+      const myReq = await api.projects.getMyRequest(id);
+      const isMember = p.members?.some(m => m._id === cu.linkedUser._id || m === cu.linkedUser._id || m._id === cu.linkedUser || m === cu.linkedUser);
+
+      if (myReq) {
+        const typeStr = myReq.type === 'join' ? 'tham gia' : 'rời';
+        actionArea = `
+          <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);padding:12px 16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+            <div>
+              <div style="color:var(--yellow);font-weight:600;font-size:13px">Đang chờ Admin duyệt yêu cầu ${typeStr} dự án</div>
+              <div style="color:var(--text-muted);font-size:11px">${myReq.reason ? 'Lý do: "' + myReq.reason + '" &middot; ' : ''}Gửi lúc: ${formatDateTime(myReq.createdAt)}</div>
+            </div>
+            <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="cancelProjectRequest('${myReq._id}', '${p._id}')">Huỷ yêu cầu</button>
+          </div>
+        `;
+      } else if (isMember) {
+        actionArea = `
+          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
+            <button class="btn btn-danger" onclick="promptProjectRequest('${p._id}', 'leave', '${p.name.replace(/'/g, "\\'")}')">Gửi yêu cầu rời dự án</button>
+          </div>
+        `;
+      } else {
+        actionArea = `
+          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
+            <button class="btn btn-primary" onclick="promptProjectRequest('${p._id}', 'join', '${p.name.replace(/'/g, "\\'")}')">Gửi yêu cầu tham gia dự án</button>
+          </div>
+        `;
+      }
     }
 
     const html = `
-      <div style="margin-bottom:16px;">
+      <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;">
         <span class="badge" style="background:${dColor};color:#fff">${p.department?.name || 'Không phòng ban'}</span>
         ${statusBadge(p.status)}
       </div>
-      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6;white-space:pre-line">
         ${p.description || 'Chưa có mô tả'}
       </div>
       <div class="grid-2" style="gap:16px;margin-bottom:20px">
@@ -493,15 +517,13 @@ async function showProjectDetail(id) {
            <div style="color:var(--text-primary);font-size:14px;font-weight:600">${dead}</div>
         </div>
       </div>
-      <div style="margin-bottom:20px">
+      <div style="margin-bottom:10px">
          <h4 style="color:var(--text-primary);margin-bottom:12px;font-size:14px">Thành viên tham gia (${p.members?.length || 0})</h4>
-         <div style="max-height:200px;overflow-y:auto;padding-right:8px">
+         <div style="max-height:180px;overflow-y:auto;padding-right:8px">
             ${membersList}
          </div>
       </div>
-      <div style="display:flex;justify-content:flex-end;gap:12px">
-        ${joinLeaveBtn}
-      </div>
+      ${actionArea}
     `;
 
     modal.open({
@@ -517,21 +539,51 @@ async function showProjectDetail(id) {
   }
 }
 
-async function joinProject(id) {
-   try {
-     modal.setLoading(true);
-     await api.projects.join(id);
-     modal.close();
-     showToast('Đã tham gia dự án');
-     loadProjects();
-   } catch(err) { showToast('Lỗi: '+err.message, 'error'); modal.setLoading(false); }
+function promptProjectRequest(projectId, type, projectName) {
+  const isJoin = type === 'join';
+  modal.open({
+    title: isJoin ? 'Yêu cầu tham gia dự án' : 'Yêu cầu rời dự án',
+    body: `
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px">
+        Bạn đang gửi yêu cầu ${isJoin ? 'tham gia vào' : 'rời khỏi'} dự án <strong style="color:var(--text-primary)">${projectName}</strong>. Yêu cầu sẽ được chuyển đến Quản trị viên phê duyệt.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Lý do / Ghi chú (tùy chọn)</label>
+        <textarea id="f-req-reason" class="form-control" placeholder="Nhập lý do gửi yêu cầu..." style="height:80px"></textarea>
+      </div>
+    `,
+    confirmText: isJoin ? 'Gửi yêu cầu tham gia' : 'Gửi yêu cầu rời dự án',
+    onConfirm: async () => {
+      const reason = document.getElementById('f-req-reason')?.value?.trim() || '';
+      try {
+        modal.setLoading(true);
+        if (isJoin) {
+          await api.projects.requestJoin(projectId, { reason });
+          showToast('Đã gửi yêu cầu tham gia, đang chờ Admin duyệt');
+        } else {
+          await api.projects.requestLeave(projectId, { reason });
+          showToast('Đã gửi yêu cầu rời dự án, đang chờ Admin duyệt');
+        }
+        modal.close();
+        showProjectDetail(projectId);
+      } catch (err) {
+        showToast('Lỗi: ' + err.message, 'error');
+      } finally {
+        modal.setLoading(false);
+      }
+    }
+  });
 }
-async function leaveProject(id) {
-   try {
-     modal.setLoading(true);
-     await api.projects.leave(id);
-     modal.close();
-     showToast('Đã rời dự án');
-     loadProjects();
-   } catch(err) { showToast('Lỗi: '+err.message, 'error'); modal.setLoading(false); }
+
+async function cancelProjectRequest(requestId, projectId) {
+  try {
+    modal.setLoading(true);
+    await api.projects.cancelRequest(requestId);
+    showToast('Đã huỷ yêu cầu thành công');
+    showProjectDetail(projectId);
+  } catch (err) {
+    showToast('Lỗi: ' + err.message, 'error');
+  } finally {
+    modal.setLoading(false);
+  }
 }

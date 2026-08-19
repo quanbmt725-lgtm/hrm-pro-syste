@@ -41,7 +41,6 @@ function renderAdminView(container) {
     <div id="accountsTable"><div class="loading-spinner"><div class="spinner"></div>Đang tải...</div></div>
   `;
   document.getElementById('btnAddAccount')?.addEventListener('click', () => {
-      // Add logic for account creation modal
       modal.open({
           title: 'Tạo tài khoản mới', body: getAccountFormHtml({}, false), confirmText: 'Tạo tài khoản', wide: true,
           onConfirm: async () => {
@@ -238,18 +237,56 @@ async function loadApprovalPanel() {
   if (!panel) return;
   panel.innerHTML = '<div class="loading-spinner"><div class="spinner"></div>Đang tải yêu cầu chờ duyệt...</div>';
   try {
-    const [pendingTasks, pendingLogs, tlStats] = await Promise.all([
+    const [pendingTasks, pendingLogs, pendingRequests, tlStats] = await Promise.all([
       api.tasks.pendingApproval(),
       api.timelogs.pending(),
+      api.projects.pendingRequests(),
       api.timelogs.approvalStats(),
     ]);
 
     const badge = document.getElementById('approvalBadge');
-    const total  = (pendingTasks.length + pendingLogs.length);
+    const total = (pendingTasks.length + pendingLogs.length + (pendingRequests ? pendingRequests.length : 0));
     if (badge) badge.textContent = total > 0 ? total : '';
 
     let html = '';
 
+    // 1. Project Join/Leave requests
+    if (pendingRequests && pendingRequests.length > 0) {
+      html += `
+      <div class="approval-panel" style="margin-bottom:20px">
+        <div class="approval-panel__title">
+          <span>Yêu cầu tham gia / rời dự án (${pendingRequests.length})</span>
+          <span style="font-size:11px;font-weight:400;color:var(--text-muted)">Nhân viên gửi yêu cầu tham gia hoặc rời dự án</span>
+        </div>
+        ${pendingRequests.map(r => {
+          const isJoin = r.type === 'join';
+          const typeBadge = isJoin ? '<span class="badge badge-active">Xin tham gia</span>' : '<span class="badge badge-urgent">Xin rời</span>';
+          return `
+          <div class="approval-item">
+            ${r.user ? mkAvatar(r.user.fullName, 'sm') : '<div class="avatar avatar-sm" style="background:#475569">?</div>'}
+            <div class="approval-item__info">
+              <div class="approval-item__name">
+                ${r.user?.fullName || r.account?.fullName || 'Nhân viên'} &mdash; <strong style="color:var(--accent-3)">${r.project?.name || 'Dự án'}</strong>
+              </div>
+              <div class="approval-item__sub">
+                ${typeBadge} &middot;
+                ${r.user?.department?.name || r.user?.position || ''} &middot;
+                Gửi lúc: ${formatDateTime(r.createdAt)}
+                ${r.reason ? ` &middot; <em>Lý do: "${r.reason}"</em>` : ''}
+              </div>
+            </div>
+            <div class="approval-item__actions">
+              <button class="btn btn-xs" style="background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3)"
+                onclick="approveProjectRequest('${r._id}','approved')">Duyệt</button>
+              <button class="btn btn-xs" style="background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3)"
+                onclick="approveProjectRequest('${r._id}','rejected')">Từ chối</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    // 2. Task completion requests
     if (pendingTasks.length > 0) {
       html += `
       <div class="approval-panel" style="margin-bottom:20px">
@@ -280,6 +317,7 @@ async function loadApprovalPanel() {
       </div>`;
     }
 
+    // 3. Timelogs requests
     const statsHtml = `
     <div style="display:flex;gap:12px;margin-bottom:14px;font-size:12px">
       <span style="color:var(--yellow)">Chờ duyệt: <strong>${tlStats.pending}</strong></span>
@@ -317,10 +355,10 @@ async function loadApprovalPanel() {
       </div>`;
     }
 
-    if (!pendingTasks.length && !pendingLogs.length) {
+    if (!pendingTasks.length && !pendingLogs.length && (!pendingRequests || !pendingRequests.length)) {
       html = `<div class="empty-state" style="padding:24px">
         <div class="empty-state__title" style="color:var(--green)">Không có yêu cầu chờ duyệt</div>
-        <div class="empty-state__sub">Tất cả công việc và giờ làm đã được xử lý</div>
+        <div class="empty-state__sub">Tất cả yêu cầu dự án, công việc và giờ làm đã được xử lý</div>
       </div>`;
     }
 
@@ -328,6 +366,34 @@ async function loadApprovalPanel() {
   } catch (err) {
     panel.innerHTML = `<div class="empty-state"><div class="empty-state__sub">${err.message}</div></div>`;
   }
+}
+
+async function approveProjectRequest(id, action) {
+  if (action === 'rejected') {
+    modal.open({
+      title: 'Lý do từ chối yêu cầu',
+      body: `<div class="form-group"><label class="form-label">Ghi chú phản hồi</label><textarea id="f-reject-proj-req" class="form-control" placeholder="Nêu lý do từ chối..." style="height:80px"></textarea></div>`,
+      confirmText: 'Xác nhận từ chối',
+      onConfirm: async () => {
+        const note = document.getElementById('f-reject-proj-req').value;
+        try {
+          modal.setLoading(true);
+          await api.projects.approveRequest(id, { action: 'rejected', note });
+          modal.close();
+          showToast('Đã từ chối yêu cầu dự án');
+          loadApprovalPanel();
+        } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        finally { modal.setLoading(false); }
+      }
+    });
+    return;
+  }
+
+  try {
+    await api.projects.approveRequest(id, { action: 'approved' });
+    showToast('Đã phê duyệt yêu cầu dự án thành công');
+    loadApprovalPanel();
+  } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
 }
 
 async function approveTask(id, action) {

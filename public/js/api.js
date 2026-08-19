@@ -1,4 +1,4 @@
-﻿/* â”€â”€â”€ api.js â€” API client vá»›i JWT Bearer token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── api.js — API client với JWT Bearer token ─── */
 const BASE_URL = '';
 
 function getToken() {
@@ -17,16 +17,15 @@ async function request(method, path, body) {
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(BASE_URL + path, opts);
 
-  // Token háº¿t háº¡n hoáº·c chÆ°a Ä‘Äƒng nháº­p â†’ redirect login
   if (res.status === 401) {
     localStorage.removeItem('hrm_token');
     localStorage.removeItem('hrm_user');
     window.location.href = '/login.html';
-    throw new Error('PhiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.');
+    throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
   }
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh');
+  if (!res.ok) throw new Error(data.error || 'Lỗi không xác định');
   return data;
 }
 
@@ -37,7 +36,7 @@ const api = {
   delete: (path)         => request('DELETE', path),
 
   auth: {
-    register: (data) => fetchApi('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+    register:       (body)   => request('POST', '/api/auth/register', body),
     login:          (body)   => request('POST', '/api/auth/login', body),
     me:             ()       => request('GET',  '/api/auth/me'),
     changePassword: (body)   => request('PUT',  '/api/auth/change-password', body),
@@ -47,58 +46,64 @@ const api = {
   accounts: {
     list:          ()        => request('GET',    '/api/accounts'),
     create:        (body)    => request('POST',   '/api/accounts', body),
-    update:        (id, body)=> request('PUT',    `/api/accounts/${id}`, body),
-    remove:        (id)      => request('DELETE', `/api/accounts/${id}`),
-    resetPassword: (id, body)=> request('PUT',    `/api/accounts/${id}/reset-password`, body),
+    update:        (id, body)=> request('PUT',    '/api/accounts/' + id, body),
+    remove:        (id)      => request('DELETE', '/api/accounts/' + id),
+    resetPassword: (id, body)=> request('PUT',    '/api/accounts/' + id + '/reset-password', body),
   },
 
   dashboard: {
     stats: () => request('GET', '/api/dashboard/stats'),
   },
   departments: {
-    list:   ()        => request('GET',    '/api/departments'),
-    get:    (id)      => request('GET',    `/api/departments/${id}`),
+    list:   (params)  => request('GET',    '/api/departments' + toQuery(params)),
+    get:    (id)      => request('GET',    '/api/departments/' + id),
     create: (body)    => request('POST',   '/api/departments', body),
-    update: (id, body)=> request('PUT',    `/api/departments/${id}`, body),
-    remove: (id)      => request('DELETE', `/api/departments/${id}`),
+    update: (id, body)=> request('PUT',    '/api/departments/' + id, body),
+    remove: (id)      => request('DELETE', '/api/departments/' + id),
   },
   users: {
     list:   (params)  => request('GET',    '/api/users' + toQuery(params)),
-    get:    (id)      => request('GET',    `/api/users/${id}`),
+    get:    (id)      => request('GET',    '/api/users/' + id),
     create: (body)    => request('POST',   '/api/users', body),
-    update: (id, body)=> request('PUT',    `/api/users/${id}`, body),
-    remove: (id)      => request('DELETE', `/api/users/${id}`),
+    update: (id, body)=> request('PUT',    '/api/users/' + id, body),
+    remove: (id)      => request('DELETE', '/api/users/' + id),
   },
   projects: {
-    list:   (params)  => request('GET',    '/api/projects' + toQuery(params)),
-    get:    (id)      => request('GET',    `/api/projects/${id}`),
-    create: (body)    => request('POST',   '/api/projects', body),
-    update: (id, body)=> request('PUT',    `/api/projects/${id}`, body),
-    remove: (id)      => request('DELETE', `/api/projects/${id}`),
+    list:            (params) => request('GET',    '/api/projects' + toQuery(params)),
+    get:             (id)      => request('GET',    '/api/projects/' + id),
+    create:          (body)    => request('POST',   '/api/projects', body),
+    update:          (id, body)=> request('PUT',    '/api/projects/' + id, body),
+    remove:          (id)      => request('DELETE', '/api/projects/' + id),
+    requestJoin:     (id, body)=> request('POST',   '/api/projects/' + id + '/request-join', body),
+    requestLeave:    (id, body)=> request('POST',   '/api/projects/' + id + '/request-leave', body),
+    getMyRequest:    (id)      => request('GET',    '/api/projects/' + id + '/my-request'),
+    cancelRequest:   (reqId)   => request('DELETE', '/api/projects/requests/' + reqId),
+    pendingRequests: ()        => request('GET',    '/api/projects/requests/pending'),
+    approveRequest:  (reqId, b)=> request('PUT',    '/api/projects/requests/' + reqId + '/approve', b),
   },
   tasks: {
     list:           (params) => request('GET',  '/api/tasks' + toQuery(params)),
-    get:            (id)     => request('GET',  `/api/tasks/${id}`),
+    get:            (id)     => request('GET',  '/api/tasks/' + id),
     create:         (body)   => request('POST', '/api/tasks', body),
-    update:         (id, b)  => request('PUT',  `/api/tasks/${id}`, b),
-    remove:         (id)     => request('DELETE', `/api/tasks/${id}`),
+    update:         (id, b)  => request('PUT',  '/api/tasks/' + id, b),
+    remove:         (id)     => request('DELETE', '/api/tasks/' + id),
     aiSuggest:      (params) => request('GET',  '/api/tasks/ai-suggest' + toQuery(params)),
     pendingApproval:()       => request('GET',  '/api/tasks/pending-approval'),
-    submitApproval: (id, b)  => request('PUT',  `/api/tasks/${id}/submit-approval`, b),
-    approve:        (id, b)  => request('PUT',  `/api/tasks/${id}/approve`, b),
+    submitApproval: (id, b)  => request('PUT',  '/api/tasks/' + id + '/submit-approval', b),
+    approve:        (id, b)  => request('PUT',  '/api/tasks/' + id + '/approve', b),
   },
   timelogs: {
     list:          (params) => request('GET',    '/api/timelogs' + toQuery(params)),
-    byTask:        (taskId) => request('GET',    `/api/timelogs?task=${taskId}`),
+    byTask:        (taskId) => request('GET',    '/api/timelogs?task=' + taskId),
     create:        (body)   => request('POST',   '/api/timelogs', body),
-    remove:        (id)     => request('DELETE', `/api/timelogs/${id}`),
+    remove:        (id)     => request('DELETE', '/api/timelogs/' + id),
     pending:       ()       => request('GET',    '/api/timelogs/pending'),
-    approve:       (id, b)  => request('PUT',    `/api/timelogs/${id}/approve`, b),
+    approve:       (id, b)  => request('PUT',    '/api/timelogs/' + id + '/approve', b),
     approvalStats: ()       => request('GET',    '/api/timelogs/approval-stats'),
   },
   performance: {
     report: (params) => request('GET', '/api/performance/report' + toQuery(params)),
-    user:   (id)     => request('GET', `/api/performance/user/${id}`),
+    user:   (id)     => request('GET', '/api/performance/user/' + id),
   },
 };
 
@@ -106,4 +111,3 @@ function toQuery(params) {
   if (!params || !Object.keys(params).length) return '';
   return '?' + new URLSearchParams(params).toString();
 }
-
