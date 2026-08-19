@@ -203,7 +203,7 @@ function renderAccountsTable(accounts) {
               <div class="td-name">
                 ${mkAvatar(acc.fullName, 'sm')}
                 <div>
-                  <div>${acc.fullName} ${isMe ? '<span style="font-size:10px;color:var(--accent-3)">(Bạn)</span>' : ''}</div>
+                  <div style="cursor:pointer;color:var(--cyan)" onclick="showAccountProfile('${acc._id}')">${acc.fullName} ${isMe ? '<span style="font-size:10px;color:var(--accent-3)">(Bạn)</span>' : ''}</div>
                   <div class="td-sub">Tạo: ${formatDate(acc.createdAt)}</div>
                 </div>
               </div>
@@ -218,7 +218,7 @@ function renderAccountsTable(accounts) {
             <td>
               <div style="display:flex;gap:4px;flex-wrap:wrap">
                 <button class="btn btn-ghost btn-xs" onclick="editAccount('${acc._id}')">Sửa</button>
-                <button class="btn btn-secondary btn-xs" onclick="resetAccountPassword('${acc._id}', '${acc.username}')">Đặt lại MK</button>
+                ${acc.role !== 'admin' ? `<button class="btn btn-secondary btn-xs" onclick="resetAccountPassword('${acc._id}', '${acc.username}')">Đặt lại MK</button>` : ''}
                 ${!acc.active
                   ? `<button class="btn btn-xs" style="background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.3)" onclick="toggleAccountActive('${acc._id}', true)">Unban</button>`
                   : !isMe && acc.username !== 'admin' ? `<button class="btn btn-xs" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.3)" onclick="toggleAccountActive('${acc._id}', false)">Ban</button>` : ''}
@@ -659,4 +659,59 @@ function showChangePasswordModal() {
       finally { modal.setLoading(false); }
     },
   });
+}
+
+async function showAccountProfile(accountId) {
+  try {
+    modal.setLoading(true);
+    const accounts = await api.accounts.list();
+    const acc = accounts.find(a => a._id === accountId);
+    if (!acc) return showToast('Không tìm thấy tài khoản', 'error');
+    
+    let html = `
+      <div style="display:flex;gap:24px;align-items:center;margin-bottom:24px;">
+        ${mkAvatar(acc.fullName, 'lg')}
+        <div>
+          <h3 style="color:#f1f5f9;margin-bottom:8px;font-size:20px">${acc.fullName}</h3>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Username:</strong> ${acc.username}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Email:</strong> ${acc.email || '--'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Vai trò:</strong> ${acc.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Đăng nhập lần cuối:</strong> ${acc.lastLogin ? formatDateTime(acc.lastLogin) : 'Chưa đăng nhập'}</p>
+        </div>
+      </div>
+    `;
+    
+    if (acc.linkedUser) {
+      const u = acc.linkedUser;
+      html += `
+        <div class="card" style="background:rgba(255,255,255,0.02)">
+          <div class="card__header"><span class="card__title">Hồ sơ Nhân viên Liên kết</span></div>
+          <div class="card__body">
+            <div class="grid-2" style="gap:16px;">
+              <div>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:8px"><strong style="color:#cbd5e1">Phòng ban:</strong> ${u.department?.name || '--'}</p>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:8px"><strong style="color:#cbd5e1">Chức vụ:</strong> ${u.position || '--'}</p>
+              </div>
+              <div>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:8px"><strong style="color:#cbd5e1">Kỹ năng:</strong> ${(u.skills||[]).join(', ') || '--'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      html += `<div style="color:var(--yellow);font-size:13px;padding:12px;background:rgba(251,191,36,0.1);border-radius:8px">Tài khoản này chưa liên kết với hồ sơ nhân viên nào.</div>`;
+    }
+    
+    modal.open({
+      title: 'Thông tin Tài khoản',
+      body: html,
+      hideFooter: true,
+      wide: true
+    });
+  } catch (err) {
+    showToast('Lỗi: ' + err.message, 'error');
+  } finally {
+    modal.setLoading(false);
+  }
 }
