@@ -449,6 +449,8 @@ document.getElementById('searchTask')?.addEventListener('input', debounce(loadTa
 
 
 
+
+
 async function showProjectDetail(id) {
   try {
     modal.setLoading(true);
@@ -467,36 +469,56 @@ async function showProjectDetail(id) {
     `).join('') || '<div style="color:var(--text-muted);font-size:13px">Chưa có thành viên</div>';
     
     let actionArea = '';
-    const cu = state.currentUser;
+    let cu = state.currentUser;
 
-    if (cu && cu.role === 'user' && cu.linkedUser) {
+    if (cu && !cu.linkedUser && cu.role === 'user') {
+      try {
+        const me = await api.auth.me();
+        if (me && me.linkedUser) {
+          cu.linkedUser = me.linkedUser;
+          state.currentUser = cu;
+          localStorage.setItem('hrm_user', JSON.stringify(cu));
+        }
+      } catch (e) {}
+    }
+
+    if (cu && cu.role === 'user') {
       const myReq = await api.projects.getMyRequest(id);
-      const isMember = p.members?.some(m => m._id === cu.linkedUser._id || m === cu.linkedUser._id || m._id === cu.linkedUser || m === cu.linkedUser);
+      const linkedId = cu.linkedUser?._id || cu.linkedUser;
+      const isMember = linkedId && p.members?.some(m => m._id === linkedId || m === linkedId);
 
       if (myReq) {
         const typeStr = myReq.type === 'join' ? 'tham gia' : 'rời';
         actionArea = `
-          <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);padding:12px 16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+          <div style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);padding:14px 16px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
             <div>
-              <div style="color:var(--yellow);font-weight:600;font-size:13px">Đang chờ Admin duyệt yêu cầu ${typeStr} dự án</div>
-              <div style="color:var(--text-muted);font-size:11px">${myReq.reason ? 'Lý do: "' + myReq.reason + '" &middot; ' : ''}Gửi lúc: ${formatDateTime(myReq.createdAt)}</div>
+              <div style="color:var(--yellow);font-weight:600;font-size:13.5px">Đang chờ Admin duyệt yêu cầu ${typeStr} dự án</div>
+              <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px">${myReq.reason ? 'Lý do: "' + myReq.reason + '" &middot; ' : ''}Gửi lúc: ${formatDateTime(myReq.createdAt)}</div>
             </div>
-            <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="cancelProjectRequest('${myReq._id}', '${p._id}')">Huỷ yêu cầu</button>
+            <button class="btn btn-ghost btn-xs" style="color:var(--red);border:1px solid rgba(248,113,113,0.3)" onclick="cancelProjectRequest('${myReq._id}', '${p._id}')">Huỷ yêu cầu</button>
           </div>
         `;
       } else if (isMember) {
         actionArea = `
-          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)">
+            <span style="font-size:12px;color:var(--green);font-weight:600">Bạn đang là thành viên của dự án này</span>
             <button class="btn btn-danger" onclick="promptProjectRequest('${p._id}', 'leave', '${p.name.replace(/'/g, "\\'")}')">Gửi yêu cầu rời dự án</button>
           </div>
         `;
       } else {
         actionArea = `
-          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
+          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)">
             <button class="btn btn-primary" onclick="promptProjectRequest('${p._id}', 'join', '${p.name.replace(/'/g, "\\'")}')">Gửi yêu cầu tham gia dự án</button>
           </div>
         `;
       }
+    } else if (cu && cu.role === 'admin') {
+      actionArea = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)">
+          <span style="font-size:12px;color:var(--cyan)">Quản trị viên: Phê duyệt các yêu cầu tại mục Tài khoản</span>
+          <button class="btn btn-secondary btn-sm" onclick="modal.close(); navigate('accounts')">Xem Bảng Phê Duyệt</button>
+        </div>
+      `;
     }
 
     const html = `
@@ -530,7 +552,7 @@ async function showProjectDetail(id) {
       title: p.name,
       body: html,
       wide: true,
-      hideConfirm: true
+      hideFooter: true
     });
   } catch (err) {
     showToast('Lỗi: ' + err.message, 'error');
@@ -553,6 +575,7 @@ function promptProjectRequest(projectId, type, projectName) {
       </div>
     `,
     confirmText: isJoin ? 'Gửi yêu cầu tham gia' : 'Gửi yêu cầu rời dự án',
+    hideFooter: false,
     onConfirm: async () => {
       const reason = document.getElementById('f-req-reason')?.value?.trim() || '';
       try {

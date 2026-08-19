@@ -92,6 +92,7 @@ router.post("/login", async (req, res) => {
         fullName: account.fullName,
         email: account.email,
         role: account.role,
+        linkedUser: account.linkedUser,
         lastLogin: account.lastLogin,
       },
     });
