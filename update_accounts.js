@@ -1,4 +1,6 @@
-/* ─── accounts.js — Quản lý Tài khoản & Phê duyệt ─── */
+﻿const fs = require('fs');
+
+const content = `/* ─── accounts.js — Quản lý Tài khoản & Phê duyệt ─── */
 
 async function loadAccountsSection() {
   await loadSharedData();
@@ -21,7 +23,7 @@ async function loadAccountsSection() {
 }
 
 function renderAdminView(container) {
-  container.innerHTML = `
+  container.innerHTML = \`
     <div class="page-heading">
       <div>
         <div class="page-heading__title">Quản lý Tài khoản (Admin)</div>
@@ -39,7 +41,7 @@ function renderAdminView(container) {
 
     <div id="approvalPanel" class="mb-6"></div>
     <div id="accountsTable"><div class="loading-spinner"><div class="spinner"></div>Đang tải...</div></div>
-  `;
+  \`;
   document.getElementById('btnAddAccount')?.addEventListener('click', () => {
       // Add logic for account creation modal
       modal.open({
@@ -74,7 +76,7 @@ function renderAdminView(container) {
 }
 
 function renderUserView(container) {
-  container.innerHTML = `
+  container.innerHTML = \`
     <div class="page-heading">
       <div>
         <div class="page-heading__title">Hồ sơ & Tài khoản cá nhân</div>
@@ -96,7 +98,7 @@ function renderUserView(container) {
         <div class="loading-spinner"><div class="spinner"></div>Đang tải thông tin...</div>
       </div>
     </div>
-  `;
+  \`;
 }
 
 async function loadUserProfile() {
@@ -125,24 +127,24 @@ async function loadUserProfile() {
     
     document.getElementById('usrScore').textContent = acc.linkedUser?.performanceScore || 'N/A';
     
-    container.innerHTML = `
+    container.innerHTML = \`
       <div style="display:flex;gap:24px;align-items:center;">
-        ${mkAvatar(acc.fullName, 'lg')}
+        \${mkAvatar(acc.fullName, 'lg')}
         <div>
-          <h3 style="color:#f1f5f9;margin-bottom:8px;font-size:20px">${acc.fullName}</h3>
-          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Chức danh:</strong> ${acc.linkedUser?.position || 'Chưa cập nhật'}</p>
-          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Email:</strong> ${acc.email || 'Chưa cập nhật'}</p>
-          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Phòng ban:</strong> ${acc.linkedUser?.department?.name || 'Chưa phân bổ'}</p>
-          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Đăng nhập lần cuối:</strong> ${acc.lastLogin ? formatDateTime(acc.lastLogin) : 'Chưa đăng nhập'}</p>
-          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Số lần đăng nhập:</strong> ${acc.loginCount || 0}</p>
+          <h3 style="color:#f1f5f9;margin-bottom:8px;font-size:20px">\${acc.fullName}</h3>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Chức danh:</strong> \${acc.linkedUser?.position || 'Chưa cập nhật'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Email:</strong> \${acc.email || 'Chưa cập nhật'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Phòng ban:</strong> \${acc.linkedUser?.department?.name || 'Chưa phân bổ'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Đăng nhập lần cuối:</strong> \${acc.lastLogin ? formatDateTime(acc.lastLogin) : 'Chưa đăng nhập'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Số lần đăng nhập:</strong> \${acc.loginCount || 0}</p>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-            ${(acc.linkedUser?.skills || []).map(s => `<span class="badge badge-active">${s}</span>`).join('')}
+            \${(acc.linkedUser?.skills || []).map(s => \`<span class="badge badge-active">\${s}</span>\`).join('')}
           </div>
         </div>
       </div>
-    `;
+    \`;
   } catch (err) {
-    if(container) container.innerHTML = `<div class="empty-state">Lỗi: ${err.message}</div>`;
+    if(container) container.innerHTML = \`<div class="empty-state">Lỗi: \${err.message}</div>\`;
   }
 }
 
@@ -155,7 +157,7 @@ async function loadAccounts() {
     renderAccountsTable(accounts);
     updateAccountStats(accounts);
   } catch (err) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state__title">Lỗi tải dữ liệu</div><div class="empty-state__sub">${err.message}</div></div>`;
+    container.innerHTML = \`<div class="empty-state"><div class="empty-state__title">Lỗi tải dữ liệu</div><div class="empty-state__sub">\${err.message}</div></div>\`;
   }
 }
 
@@ -178,7 +180,7 @@ function renderAccountsTable(accounts) {
     return;
   }
   const currentUser = state.currentUser || {};
-  container.innerHTML = `
+  container.innerHTML = \`
   <div class="table-wrap">
     <table>
       <thead><tr>
@@ -193,44 +195,44 @@ function renderAccountsTable(accounts) {
         <th>Hành động</th>
       </tr></thead>
       <tbody>
-        ${accounts.map(acc => {
+        \${accounts.map(acc => {
           const isMe      = acc._id === currentUser.id;
           const roleLabel = acc.role === 'admin' ? 'Quản trị viên' : 'Người dùng';
           const roleCls   = acc.role === 'admin' ? 'badge-urgent' : 'badge-active';
           const statusLabel = acc.active ? 'Hoạt động' : 'Đã Khóa';
           const statusCls   = acc.active ? 'badge-active' : 'badge-hold';
-          return `<tr class="${!acc.active ? 'row-inactive' : ''}">
+          return \`<tr class="\${!acc.active ? 'row-inactive' : ''}">
             <td>
               <div class="td-name">
-                ${mkAvatar(acc.fullName, 'sm')}
+                \${mkAvatar(acc.fullName, 'sm')}
                 <div>
-                  <div>${acc.fullName} ${isMe ? '<span style="font-size:10px;color:var(--accent-3)">(Bạn)</span>' : ''}</div>
-                  <div class="td-sub">Tạo: ${formatDate(acc.createdAt)}</div>
+                  <div>\${acc.fullName} \${isMe ? '<span style="font-size:10px;color:var(--accent-3)">(Bạn)</span>' : ''}</div>
+                  <div class="td-sub">Tạo: \${formatDate(acc.createdAt)}</div>
                 </div>
               </div>
             </td>
-            <td><code style="font-size:12px;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:4px;color:var(--cyan)">${acc.username}</code></td>
-            <td><span style="font-size:12px;color:var(--text-secondary)">${acc.email || '--'}</span></td>
-            <td><span class="badge ${roleCls}">${roleLabel}</span></td>
-            <td><span class="badge ${statusCls}">${statusLabel}</span></td>
-            <td style="text-align:center"><span style="font-size:13px;font-weight:600;color:var(--text-primary)">${acc.loginCount || 0}</span></td>
-            <td><span style="font-size:11px;color:var(--text-muted)">${acc.lastLogin ? formatDateTime(acc.lastLogin) : '—'}</span></td>
-            <td>${acc.adminNote ? `<span class="account-note">${acc.adminNote}</span>` : '<span style="color:var(--text-muted);font-size:11px">—</span>'}</td>
+            <td><code style="font-size:12px;background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:4px;color:var(--cyan)">\${acc.username}</code></td>
+            <td><span style="font-size:12px;color:var(--text-secondary)">\${acc.email || '--'}</span></td>
+            <td><span class="badge \${roleCls}">\${roleLabel}</span></td>
+            <td><span class="badge \${statusCls}">\${statusLabel}</span></td>
+            <td style="text-align:center"><span style="font-size:13px;font-weight:600;color:var(--text-primary)">\${acc.loginCount || 0}</span></td>
+            <td><span style="font-size:11px;color:var(--text-muted)">\${acc.lastLogin ? formatDateTime(acc.lastLogin) : '—'}</span></td>
+            <td>\${acc.adminNote ? \`<span class="account-note">\${acc.adminNote}</span>\` : '<span style="color:var(--text-muted);font-size:11px">—</span>'}</td>
             <td>
               <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="btn btn-ghost btn-xs" onclick="editAccount('${acc._id}')">Sửa</button>
-                <button class="btn btn-secondary btn-xs" onclick="resetAccountPassword('${acc._id}', '${acc.username}')">Đặt lại MK</button>
-                ${!acc.active
-                  ? `<button class="btn btn-xs" style="background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.3)" onclick="toggleAccountActive('${acc._id}', true)">Unban</button>`
-                  : !isMe && acc.username !== 'admin' ? `<button class="btn btn-xs" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.3)" onclick="toggleAccountActive('${acc._id}', false)">Ban</button>` : ''}
-                ${!isMe && acc.username !== 'admin' ? `<button class="btn btn-danger btn-xs" onclick="deleteAccount('${acc._id}', '${acc.username}')">Xóa</button>` : ''}
+                <button class="btn btn-ghost btn-xs" onclick="editAccount('\${acc._id}')">Sửa</button>
+                <button class="btn btn-secondary btn-xs" onclick="resetAccountPassword('\${acc._id}', '\${acc.username}')">Đặt lại MK</button>
+                \${!acc.active
+                  ? \`<button class="btn btn-xs" style="background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.3)" onclick="toggleAccountActive('\${acc._id}', true)">Unban</button>\`
+                  : !isMe && acc.username !== 'admin' ? \`<button class="btn btn-xs" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.3)" onclick="toggleAccountActive('\${acc._id}', false)">Ban</button>\` : ''}
+                \${!isMe && acc.username !== 'admin' ? \`<button class="btn btn-danger btn-xs" onclick="deleteAccount('\${acc._id}', '\${acc.username}')">Xóa</button>\` : ''}
               </div>
             </td>
-          </tr>`;
+          </tr>\`;
         }).join('')}
       </tbody>
     </table>
-  </div>`;
+  </div>\`;
 }
 
 async function loadApprovalPanel() {
@@ -251,82 +253,82 @@ async function loadApprovalPanel() {
     let html = '';
 
     if (pendingTasks.length > 0) {
-      html += `
+      html += \`
       <div class="approval-panel" style="margin-bottom:20px">
         <div class="approval-panel__title">
-          <span>Công việc chờ duyệt hoàn thành (${pendingTasks.length})</span>
+          <span>Công việc chờ duyệt hoàn thành (\${pendingTasks.length})</span>
           <span style="font-size:11px;font-weight:400;color:var(--text-muted)">Nhân viên đánh dấu hoàn thành, cần admin xác nhận</span>
         </div>
-        ${pendingTasks.map(t => `
+        \${pendingTasks.map(t => \`
         <div class="approval-item">
-          ${t.assignee ? mkAvatar(t.assignee.fullName, 'sm') : '<div class="avatar avatar-sm" style="background:#475569">?</div>'}
+          \${t.assignee ? mkAvatar(t.assignee.fullName, 'sm') : '<div class="avatar avatar-sm" style="background:#475569">?</div>'}
           <div class="approval-item__info">
-            <div class="approval-item__name">${t.name}</div>
+            <div class="approval-item__name">\${t.name}</div>
             <div class="approval-item__sub">
-              ${t.project?.name || ''} &middot;
-              ${t.assignee?.fullName || 'Chưa phân công'} &middot;
-              Gửi duyệt: ${formatDateTime(t.updatedAt)}
-              ${t.approvalNote ? ` &middot; <em>"${t.approvalNote}"</em>` : ''}
+              \${t.project?.name || ''} &middot;
+              \${t.assignee?.fullName || 'Chưa phân công'} &middot;
+              Gửi duyệt: \${formatDateTime(t.updatedAt)}
+              \${t.approvalNote ? \` &middot; <em>"\${t.approvalNote}"</em>\` : ''}
             </div>
           </div>
-          ${priorityBadge(t.priority)}
+          \${priorityBadge(t.priority)}
           <div class="approval-item__actions">
             <button class="btn btn-xs" style="background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3)"
-              onclick="approveTask('${t._id}','approved')">Duyệt</button>
+              onclick="approveTask('\${t._id}','approved')">Duyệt</button>
             <button class="btn btn-xs" style="background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3)"
-              onclick="approveTask('${t._id}','rejected')">Từ chối</button>
+              onclick="approveTask('\${t._id}','rejected')">Từ chối</button>
           </div>
-        </div>`).join('')}
-      </div>`;
+        </div>\`).join('')}
+      </div>\`;
     }
 
-    const statsHtml = `
+    const statsHtml = \`
     <div style="display:flex;gap:12px;margin-bottom:14px;font-size:12px">
-      <span style="color:var(--yellow)">Chờ duyệt: <strong>${tlStats.pending}</strong></span>
-      <span style="color:var(--green)">Đã duyệt: <strong>${tlStats.approved}</strong></span>
-      <span style="color:var(--red)">Từ chối: <strong>${tlStats.rejected}</strong></span>
-    </div>`;
+      <span style="color:var(--yellow)">Chờ duyệt: <strong>\${tlStats.pending}</strong></span>
+      <span style="color:var(--green)">Đã duyệt: <strong>\${tlStats.approved}</strong></span>
+      <span style="color:var(--red)">Từ chối: <strong>\${tlStats.rejected}</strong></span>
+    </div>\`;
 
     if (pendingLogs.length > 0) {
-      html += `
+      html += \`
       <div class="approval-panel">
         <div class="approval-panel__title">
-          <span>Giờ làm chờ duyệt (${pendingLogs.length})</span>
+          <span>Giờ làm chờ duyệt (\${pendingLogs.length})</span>
           <span style="font-size:11px;font-weight:400;color:var(--text-muted)">Nhân viên ghi nhận, cần admin xác nhận</span>
         </div>
-        ${statsHtml}
-        ${pendingLogs.map(l => `
+        \${statsHtml}
+        \${pendingLogs.map(l => \`
         <div class="approval-item">
-          ${mkAvatar(l.staff?.fullName || '?', 'sm')}
+          \${mkAvatar(l.staff?.fullName || '?', 'sm')}
           <div class="approval-item__info">
-            <div class="approval-item__name">${l.staff?.fullName || '--'} — <span style="color:var(--accent-3)">${l.hoursWorked}h</span></div>
+            <div class="approval-item__name">\${l.staff?.fullName || '--'} — <span style="color:var(--accent-3)">\${l.hoursWorked}h</span></div>
             <div class="approval-item__sub">
-              ${l.task?.name || ''} / ${l.task?.project?.name || ''} &middot;
-              ${formatDate(l.date)}
-              ${l.notes ? ` &middot; <em>"${l.notes}"</em>` : ''}
+              \${l.task?.name || ''} / \${l.task?.project?.name || ''} &middot;
+              \${formatDate(l.date)}
+              \${l.notes ? \` &middot; <em>"\${l.notes}"</em>\` : ''}
             </div>
           </div>
-          ${l.qualityRating ? `<span class="badge badge-active" style="flex-shrink:0">★ ${l.qualityRating}/5</span>` : ''}
+          \${l.qualityRating ? \`<span class="badge badge-active" style="flex-shrink:0">★ \${l.qualityRating}/5</span>\` : ''}
           <div class="approval-item__actions">
             <button class="btn btn-xs" style="background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3)"
-              onclick="approveTimelog('${l._id}','approved')">Duyệt</button>
+              onclick="approveTimelog('\${l._id}','approved')">Duyệt</button>
             <button class="btn btn-xs" style="background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3)"
-              onclick="approveTimelog('${l._id}','rejected')">Từ chối</button>
+              onclick="approveTimelog('\${l._id}','rejected')">Từ chối</button>
           </div>
-        </div>`).join('')}
-      </div>`;
+        </div>\`).join('')}
+      </div>\`;
     }
 
     if (!pendingTasks.length && !pendingLogs.length) {
-      html = `<div class="empty-state" style="padding:24px">
+      html = \`<div class="empty-state" style="padding:24px">
         <div class="empty-state__title" style="color:var(--green)">Không có yêu cầu chờ duyệt</div>
         <div class="empty-state__sub">Tất cả công việc và giờ làm đã được xử lý</div>
-      </div>`;
+      </div>\`;
     }
 
     panel.innerHTML = html;
   } catch (err) {
-    panel.innerHTML = `<div class="empty-state"><div class="empty-state__sub">${err.message}</div></div>`;
+    panel.innerHTML = \`<div class="empty-state"><div class="empty-state__sub">\${err.message}</div></div>\`;
   }
 }
 
@@ -334,7 +336,7 @@ async function approveTask(id, action) {
   if (action === 'rejected') {
     modal.open({
       title: 'Lý do từ chối',
-      body: `<div class="form-group"><label class="form-label">Ghi chú lý do từ chối</label><textarea id="f-reject-note" class="form-control" placeholder="Nêu lý do..." style="height:80px"></textarea></div>`,
+      body: \`<div class="form-group"><label class="form-label">Ghi chú lý do từ chối</label><textarea id="f-reject-note" class="form-control" placeholder="Nêu lý do..." style="height:80px"></textarea></div>\`,
       confirmText: 'Xác nhận từ chối',
       onConfirm: async () => {
         const note = document.getElementById('f-reject-note').value;
@@ -361,7 +363,7 @@ async function approveTimelog(id, action) {
   if (action === 'rejected') {
     modal.open({
       title: 'Từ chối giờ làm',
-      body: `<div class="form-group"><label class="form-label">Lý do từ chối</label><textarea id="f-reject-tl" class="form-control" placeholder="Nhập lý do..." style="height:80px"></textarea></div>`,
+      body: \`<div class="form-group"><label class="form-label">Lý do từ chối</label><textarea id="f-reject-tl" class="form-control" placeholder="Nhập lý do..." style="height:80px"></textarea></div>\`,
       confirmText: 'Từ chối',
       onConfirm: async () => {
         const reason = document.getElementById('f-reject-tl').value;
@@ -388,70 +390,70 @@ function renderPwStrength(pw, containerId) {
     length:  pw.length >= 8,
     upper:   /[A-Z]/.test(pw),
     number:  /[0-9]/.test(pw),
-    special: /[!@#$%^&*()-_,.?":{}|<>]/.test(pw),
+    special: /[!@#$%^&*()\-_,.?":{}|<>]/.test(pw),
   };
   const score    = Object.values(checks).filter(Boolean).length;
   const strength = score <= 1 ? 'weak' : score === 2 ? 'fair' : score === 3 ? 'good' : 'strong';
   const label    = { weak: 'Yếu', fair: 'Trung bình', good: 'Khá', strong: 'Mạnh' }[strength];
   const color    = { weak: 'var(--red)', fair: 'var(--yellow)', good: 'var(--cyan)', strong: 'var(--green)' }[strength];
-  container.innerHTML = `
+  container.innerHTML = \`
   <div class="pw-strength">
     <div class="pw-strength__bar">
-      ${[1,2,3,4].map(i => `<div class="pw-strength__seg ${i <= score ? strength : ''}"></div>`).join('')}
+      \${[1,2,3,4].map(i => \`<div class="pw-strength__seg \${i <= score ? strength : ''}"></div>\`).join('')}
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
       <div class="pw-strength__checks">
-        <span class="pw-check ${checks.length ? 'pass' : 'fail'}">8+ ký tự</span>
-        <span class="pw-check ${checks.upper  ? 'pass' : 'fail'}">Chữ hoa</span>
-        <span class="pw-check ${checks.number ? 'pass' : 'fail'}">Số</span>
-        <span class="pw-check ${checks.special? 'pass' : 'fail'}">Ký tự đặc biệt</span>
+        <span class="pw-check \${checks.length ? 'pass' : 'fail'}">8+ ký tự</span>
+        <span class="pw-check \${checks.upper  ? 'pass' : 'fail'}">Chữ hoa</span>
+        <span class="pw-check \${checks.number ? 'pass' : 'fail'}">Số</span>
+        <span class="pw-check \${checks.special? 'pass' : 'fail'}">Ký tự đặc biệt</span>
       </div>
-      ${pw ? `<span style="font-size:11px;color:${color};font-weight:600">${label}</span>` : ''}
+      \${pw ? \`<span style="font-size:11px;color:\${color};font-weight:600">\${label}</span>\` : ''}
     </div>
-  </div>`;
+  </div>\`;
 }
 
 function getAccountFormHtml(acc = {}, isEdit = false) {
   const userOptions = (state.users || []).map(u =>
-    `<option value="${u._id}" ${acc.linkedUser?._id === u._id ? 'selected' : ''}>${u.fullName}</option>`
+    \`<option value="\${u._id}" \${acc.linkedUser?._id === u._id ? 'selected' : ''}>\${u.fullName}</option>\`
   ).join('');
-  return `
+  return \`
   <div class="form-row">
     <div class="form-group">
       <label class="form-label">Họ tên *</label>
-      <input id="f-acc-name" class="form-control" value="${acc.fullName || ''}" placeholder="Nguyễn Văn A">
+      <input id="f-acc-name" class="form-control" value="\${acc.fullName || ''}" placeholder="Nguyễn Văn A">
     </div>
     <div class="form-group">
       <label class="form-label">Email</label>
-      <input id="f-acc-email" class="form-control" type="email" value="${acc.email || ''}">
+      <input id="f-acc-email" class="form-control" type="email" value="\${acc.email || ''}">
     </div>
   </div>
   <div class="form-row">
     <div class="form-group">
-      <label class="form-label">Username * ${isEdit ? '<span style="font-size:10px;color:var(--text-muted)">(không thể đổi)</span>' : '<span style="font-size:10px;color:var(--text-muted)">(chỉ chữ thường, số, gạch dưới)</span>'}</label>
-      <input id="f-acc-username" class="form-control" value="${acc.username || ''}" placeholder="ten_dang_nhap" ${isEdit ? 'readonly style="opacity:0.6"' : ''}>
+      <label class="form-label">Username * \${isEdit ? '<span style="font-size:10px;color:var(--text-muted)">(không thể đổi)</span>' : '<span style="font-size:10px;color:var(--text-muted)">(chỉ chữ thường, số, gạch dưới)</span>'}</label>
+      <input id="f-acc-username" class="form-control" value="\${acc.username || ''}" placeholder="ten_dang_nhap" \${isEdit ? 'readonly style="opacity:0.6"' : ''}>
     </div>
-    ${!isEdit ? `
+    \${!isEdit ? \`
     <div class="form-group">
       <label class="form-label">Mật khẩu *</label>
       <input id="f-acc-password" class="form-control" type="password" placeholder="Tối thiểu 8 ký tự..."
         oninput="renderPwStrength(this.value,'pwStrengthBox')">
       <div id="pwStrengthBox"></div>
-    </div>` : '<div></div>'}
+    </div>\` : '<div></div>'}
   </div>
   <div class="form-row">
     <div class="form-group">
       <label class="form-label">Vai trò</label>
       <select id="f-acc-role" class="form-control">
-        <option value="user" ${acc.role === 'user' || !acc.role ? 'selected' : ''}>Người dùng</option>
-        <option value="admin" ${acc.role === 'admin' ? 'selected' : ''}>Quản trị viên</option>
+        <option value="user" \${acc.role === 'user' || !acc.role ? 'selected' : ''}>Người dùng</option>
+        <option value="admin" \${acc.role === 'admin' ? 'selected' : ''}>Quản trị viên</option>
       </select>
     </div>
     <div class="form-group">
       <label class="form-label">Trạng thái</label>
       <select id="f-acc-active" class="form-control">
-        <option value="true" ${acc.active !== false ? 'selected' : ''}>Hoạt động</option>
-        <option value="false" ${acc.active === false ? 'selected' : ''}>Vô hiệu hoá</option>
+        <option value="true" \${acc.active !== false ? 'selected' : ''}>Hoạt động</option>
+        <option value="false" \${acc.active === false ? 'selected' : ''}>Vô hiệu hoá</option>
       </select>
     </div>
   </div>
@@ -459,24 +461,24 @@ function getAccountFormHtml(acc = {}, isEdit = false) {
     <label class="form-label">Liên kết với nhân viên (tuỳ chọn)</label>
     <select id="f-acc-linked" class="form-control">
       <option value="">-- Không liên kết --</option>
-      ${userOptions}
+      \${userOptions}
     </select>
   </div>
   <div class="form-group">
     <label class="form-label">Ghi chú nội bộ (chỉ admin thấy)</label>
-    <input id="f-acc-note" class="form-control" value="${acc.adminNote || ''}" placeholder="Ghi chú nội bộ...">
+    <input id="f-acc-note" class="form-control" value="\${acc.adminNote || ''}" placeholder="Ghi chú nội bộ...">
   </div>
   <div style="padding:10px 12px;background:rgba(99,102,241,0.08);border-radius:8px;font-size:11.5px;color:var(--text-secondary)">
     <strong style="color:var(--accent-3)">Quản trị viên:</strong> Toàn quyền truy cập, quản lý tài khoản, duyệt công việc &amp; giờ làm.<br>
     <strong style="color:var(--cyan)">Người dùng:</strong> Xem và thao tác dữ liệu, ghi nhận giờ làm, gửi yêu cầu duyệt.
-  </div>`;
+  </div>\`;
 }
 
 function validatePw(pw) {
   if (!pw || pw.length < 8)             return 'Mật khẩu phải có ít nhất 8 ký tự';
   if (!/[A-Z]/.test(pw))               return 'Cần ít nhất 1 chữ hoa (A-Z)';
   if (!/[0-9]/.test(pw))               return 'Cần ít nhất 1 chữ số (0-9)';
-  if (!/[!@#$%^&*()\-_,.?":{}|<>]/.test(pw)) return 'Cần ít nhất 1 ký tự đặc biệt (!@#...)';
+  if (!/[!@#$%^&*()\\-_,.?":{}|<>]/.test(pw)) return 'Cần ít nhất 1 ký tự đặc biệt (!@#...)';
   return null;
 }
 
@@ -518,8 +520,8 @@ async function toggleAccountActive(id, activate) {
 
 function resetAccountPassword(id, username) {
   modal.open({
-    title: `Đặt lại mật khẩu — ${username}`,
-    body: `
+    title: \`Đặt lại mật khẩu — \${username}\`,
+    body: \`
     <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Mật khẩu mới phải đáp ứng yêu cầu bảo mật.</p>
     <div class="form-group">
       <label class="form-label">Mật khẩu mới *</label>
@@ -530,7 +532,7 @@ function resetAccountPassword(id, username) {
     <div class="form-group">
       <label class="form-label">Nhập lại mật khẩu</label>
       <input id="f-reset-pw2" class="form-control" type="password" placeholder="Nhập lại mật khẩu mới">
-    </div>`,
+    </div>\`,
     confirmText: 'Đặt lại mật khẩu',
     onConfirm: async () => {
       const pw  = document.getElementById('f-reset-pw').value;
@@ -551,7 +553,7 @@ function resetAccountPassword(id, username) {
 function deleteAccount(id, username) {
   modal.open({
     title: 'Xác nhận xoá tài khoản',
-    body: `<p style="color:var(--text-secondary)">Bạn có chắc muốn xoá tài khoản <strong style="color:var(--text-primary)">${username}</strong>?<br>Hành động này không thể hoàn tác.</p>`,
+    body: \`<p style="color:var(--text-secondary)">Bạn có chắc muốn xoá tài khoản <strong style="color:var(--text-primary)">\${username}</strong>?<br>Hành động này không thể hoàn tác.</p>\`,
     confirmText: 'Xoá tài khoản',
     onConfirm: async () => {
       try {
@@ -567,7 +569,7 @@ function deleteAccount(id, username) {
 function showChangePasswordModal() {
   modal.open({
     title: 'Đổi mật khẩu',
-    body: `
+    body: \`
     <div class="form-group"><label class="form-label">Mật khẩu hiện tại</label><input id="f-cp-old" class="form-control" type="password" placeholder="Mật khẩu hiện tại"></div>
     <div class="form-group">
       <label class="form-label">Mật khẩu mới</label>
@@ -575,7 +577,7 @@ function showChangePasswordModal() {
         oninput="renderPwStrength(this.value,'cpPwStrength')">
       <div id="cpPwStrength"></div>
     </div>
-    <div class="form-group"><label class="form-label">Nhập lại mật khẩu mới</label><input id="f-cp-new2" class="form-control" type="password" placeholder="Nhập lại"></div>`,
+    <div class="form-group"><label class="form-label">Nhập lại mật khẩu mới</label><input id="f-cp-new2" class="form-control" type="password" placeholder="Nhập lại"></div>\`,
     confirmText: 'Đổi mật khẩu',
     onConfirm: async () => {
       const oldPw  = document.getElementById('f-cp-old').value;
@@ -594,3 +596,5 @@ function showChangePasswordModal() {
     },
   });
 }
+`;
+fs.writeFileSync('C:/Users/Quan/Downloads/code/test_manager/public/js/accounts.js', content, 'utf8');

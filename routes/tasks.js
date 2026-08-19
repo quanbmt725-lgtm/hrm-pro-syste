@@ -107,6 +107,13 @@ router.post('/', async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+router.get("/pending-approval", async (req, res) => {
+  try {
+    const tasks = await Task.find({ approvalStatus: "pending" })
+      .populate("project", "name")
+      .populate({ path: "assignee", select: "fullName position", populate: { path: "department", select: "name color" } })
+      .sort({ updatedAt: -1 });
+
 router.get('/:id', async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
@@ -191,13 +198,7 @@ router.put("/:id/approve", async (req, res) => {
 });
 
 // ─── Admin: Lay danh sach task cho duyet ─────────────────────────────────────
-// GET /api/tasks/pending-approval
-router.get("/pending-approval", async (req, res) => {
-  try {
-    const tasks = await Task.find({ approvalStatus: "pending" })
-      .populate("project", "name")
-      .populate({ path: "assignee", select: "fullName position", populate: { path: "department", select: "name color" } })
-      .sort({ updatedAt: -1 });
+
     res.json(tasks);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

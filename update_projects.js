@@ -1,8 +1,9 @@
-const express = require('express');
+﻿const fs = require('fs');
+const content = `const express = require('express');
 const router = express.Router();
 const Project = require('../models/Project');
 const Task = require('../models/Task');
-const { protect } = require('../middleware/auth');
+const auth = require('../middleware/auth'); // Require auth middleware for join/leave
 
 router.get('/', async (req, res) => {
   try {
@@ -35,7 +36,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // User joins a project
-router.post('/:id/join', protect, async (req, res) => {
+router.post('/:id/join', auth, async (req, res) => {
   try {
     const user = req.user; // from auth middleware
     if (!user || !user.linkedUser) return res.status(400).json({ error: 'Tai khoan chua lien ket ho so nhan vien' });
@@ -53,7 +54,7 @@ router.post('/:id/join', protect, async (req, res) => {
 });
 
 // User leaves a project
-router.post('/:id/leave', protect, async (req, res) => {
+router.post('/:id/leave', auth, async (req, res) => {
   try {
     const user = req.user;
     if (!user || !user.linkedUser) return res.status(400).json({ error: 'Tai khoan chua lien ket ho so nhan vien' });
@@ -89,3 +90,5 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+`;
+fs.writeFileSync('C:/Users/Quan/Downloads/code/test_manager/routes/projects.js', content, 'utf8');
