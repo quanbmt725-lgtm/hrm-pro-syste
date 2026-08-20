@@ -548,8 +548,7 @@ function validatePw(pw) {
 
 async function editAccount(id) {
   try {
-    const accounts = await api.accounts.list();
-    const acc = accounts.find(a => a._id === id);
+    const acc = _allAccounts.find(a => a._id === id);
     if (!acc) return showToast('Không tìm thấy tài khoản', 'error');
     modal.open({
       title: 'Cập nhật tài khoản', body: getAccountFormHtml(acc, true), confirmText: 'Cập nhật', wide: true,
@@ -664,8 +663,7 @@ function showChangePasswordModal() {
 async function showAccountProfile(accountId) {
   try {
     modal.setLoading(true);
-    const accounts = await api.accounts.list();
-    const acc = accounts.find(a => a._id === accountId);
+    const acc = _allAccounts.find(a => a._id === accountId);
     if (!acc) return showToast('Không tìm thấy tài khoản', 'error');
     
     let html = `
