@@ -24,7 +24,8 @@ async function request(method, path, body) {
     throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
   }
 
-  const data = await res.json();
+  let data;
+  try { data = await res.json(); } catch(e) { throw new Error('Server error ' + res.status); }
   if (!res.ok) throw new Error(data.error || 'Lỗi không xác định');
   return data;
 }
