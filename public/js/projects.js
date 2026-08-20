@@ -38,7 +38,7 @@ function renderProjectList(projects) {
     const dead   = p.deadline ? formatDate(p.deadline) : '--';
     const overdue = p.status !== 'Completed' && isOverdue(p.deadline);
     return `
-    <div class="project-item">
+    <div class="project-item" style="cursor:pointer;" onclick="showProjectDetail('${p._id}')">
       <div style="width:4px;height:60px;background:${dColor};border-radius:2px;flex-shrink:0"></div>
       <div class="project-item__info">
         <div class="project-item__name">${p.name}</div>
@@ -57,9 +57,10 @@ function renderProjectList(projects) {
           <div class="progress-bar__fill" style="width:${p.progress}%"></div>
         </div>
       </div>
-      <div class="project-item__actions">
+      <div class="project-item__actions" onclick="event.stopPropagation()">
+${state.currentUser?.role === 'admin' ? `
         <button class="btn btn-ghost btn-xs" onclick="editProject('${p._id}')">Sửa</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteProject('${p._id}', '${p.name.replace(/'/g,"\\'")}')">Xoá</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteProject('${p._id}', '${p.name.replace(/'/g,"\\'")}')">Xoá</button>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -445,3 +446,167 @@ async function deleteTask(id, name) {
 }
 
 document.getElementById('searchTask')?.addEventListener('input', debounce(loadTasks, 300));
+
+
+
+
+
+async function showProjectDetail(id) {
+  try {
+    modal.setLoading(true);
+    const p = await api.projects.get(id);
+    const dColor = p.department?.color || '#6366f1';
+    const dead = p.deadline ? formatDate(p.deadline) : '--';
+    
+    const membersList = (p.members || []).map(m => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        ${mkAvatar(m.fullName, 'sm')}
+        <div>
+           <div style="font-size:13px;color:var(--text-primary)">${m.fullName}</div>
+           <div style="font-size:11px;color:var(--text-muted)">${m.email || ''}</div>
+        </div>
+      </div>
+    `).join('') || '<div style="color:var(--text-muted);font-size:13px">Chưa có thành viên</div>';
+    
+    let actionArea = '';
+    let cu = state.currentUser;
+
+    if (cu && !cu.linkedUser && cu.role === 'user') {
+      try {
+        const me = await api.auth.me();
+        if (me && me.linkedUser) {
+          cu.linkedUser = me.linkedUser;
+          state.currentUser = cu;
+          localStorage.setItem('hrm_user', JSON.stringify(cu));
+        }
+      } catch (e) {}
+    }
+
+    if (cu && cu.role === 'user') {
+      const myReq = await api.projects.getMyRequest(id);
+      const linkedId = cu.linkedUser?._id || cu.linkedUser;
+      const isMember = linkedId && p.members?.some(m => m._id === linkedId || m === linkedId);
+
+      if (myReq) {
+        const typeStr = myReq.type === 'join' ? 'tham gia' : 'rời';
+        actionArea = `
+          <div style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.4);padding:14px 16px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
+            <div>
+              <div style="color:var(--yellow);font-weight:600;font-size:13.5px">Đang chờ Admin duyệt yêu cầu ${typeStr} dự án</div>
+              <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px">${myReq.reason ? 'Lý do: "' + myReq.reason + '" &middot; ' : ''}Gửi lúc: ${formatDateTime(myReq.createdAt)}</div>
+            </div>
+            <button class="btn btn-ghost btn-xs" style="color:var(--red);border:1px solid rgba(248,113,113,0.3)" onclick="cancelProjectRequest('${myReq._id}', '${p._id}')">Huỷ yêu cầu</button>
+          </div>
+        `;
+      } else if (isMember) {
+        actionArea = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)">
+            <span style="font-size:12px;color:var(--green);font-weight:600">Bạn đang là thành viên của dự án này</span>
+            <button class="btn btn-danger" onclick="promptProjectRequest('${p._id}', 'leave', '${p.name.replace(/'/g, "\\'")}')">Gửi yêu cầu rời dự án</button>
+          </div>
+        `;
+      } else {
+        actionArea = `
+          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)">
+            <button class="btn btn-primary" onclick="promptProjectRequest('${p._id}', 'join', '${p.name.replace(/'/g, "\\'")}')">Gửi yêu cầu tham gia dự án</button>
+          </div>
+        `;
+      }
+    } else if (cu && cu.role === 'admin') {
+      actionArea = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)">
+          <span style="font-size:12px;color:var(--cyan)">Quản trị viên: Phê duyệt các yêu cầu tại mục Tài khoản</span>
+          <button class="btn btn-secondary btn-sm" onclick="modal.close(); navigate('accounts')">Xem Bảng Phê Duyệt</button>
+        </div>
+      `;
+    }
+
+    const html = `
+      <div style="margin-bottom:16px;display:flex;gap:8px;align-items:center;">
+        <span class="badge" style="background:${dColor};color:#fff">${p.department?.name || 'Không phòng ban'}</span>
+        ${statusBadge(p.status)}
+      </div>
+      <div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6;white-space:pre-line">
+        ${p.description || 'Chưa có mô tả'}
+      </div>
+      <div class="grid-2" style="gap:16px;margin-bottom:20px">
+        <div class="kpi-card">
+           <div class="kpi-card__label">Ngày tạo</div>
+           <div style="color:var(--text-primary);font-size:14px;font-weight:600">${formatDate(p.createdAt)}</div>
+        </div>
+        <div class="kpi-card">
+           <div class="kpi-card__label">Hạn chót</div>
+           <div style="color:var(--text-primary);font-size:14px;font-weight:600">${dead}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+         <h4 style="color:var(--text-primary);margin-bottom:12px;font-size:14px">Thành viên tham gia (${p.members?.length || 0})</h4>
+         <div style="max-height:180px;overflow-y:auto;padding-right:8px">
+            ${membersList}
+         </div>
+      </div>
+      ${actionArea}
+    `;
+
+    modal.open({
+      title: p.name,
+      body: html,
+      wide: true,
+      hideFooter: true
+    });
+  } catch (err) {
+    showToast('Lỗi: ' + err.message, 'error');
+  } finally {
+    modal.setLoading(false);
+  }
+}
+
+function promptProjectRequest(projectId, type, projectName) {
+  const isJoin = type === 'join';
+  modal.open({
+    title: isJoin ? 'Yêu cầu tham gia dự án' : 'Yêu cầu rời dự án',
+    body: `
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px">
+        Bạn đang gửi yêu cầu ${isJoin ? 'tham gia vào' : 'rời khỏi'} dự án <strong style="color:var(--text-primary)">${projectName}</strong>. Yêu cầu sẽ được chuyển đến Quản trị viên phê duyệt.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Lý do / Ghi chú (tùy chọn)</label>
+        <textarea id="f-req-reason" class="form-control" placeholder="Nhập lý do gửi yêu cầu..." style="height:80px"></textarea>
+      </div>
+    `,
+    confirmText: isJoin ? 'Gửi yêu cầu tham gia' : 'Gửi yêu cầu rời dự án',
+    hideFooter: false,
+    onConfirm: async () => {
+      const reason = document.getElementById('f-req-reason')?.value?.trim() || '';
+      try {
+        modal.setLoading(true);
+        if (isJoin) {
+          await api.projects.requestJoin(projectId, { reason });
+          showToast('Đã gửi yêu cầu tham gia, đang chờ Admin duyệt');
+        } else {
+          await api.projects.requestLeave(projectId, { reason });
+          showToast('Đã gửi yêu cầu rời dự án, đang chờ Admin duyệt');
+        }
+        modal.close();
+        showProjectDetail(projectId);
+      } catch (err) {
+        showToast('Lỗi: ' + err.message, 'error');
+      } finally {
+        modal.setLoading(false);
+      }
+    }
+  });
+}
+
+async function cancelProjectRequest(requestId, projectId) {
+  try {
+    modal.setLoading(true);
+    await api.projects.cancelRequest(requestId);
+    showToast('Đã huỷ yêu cầu thành công');
+    showProjectDetail(projectId);
+  } catch (err) {
+    showToast('Lỗi: ' + err.message, 'error');
+  } finally {
+    modal.setLoading(false);
+  }
+}

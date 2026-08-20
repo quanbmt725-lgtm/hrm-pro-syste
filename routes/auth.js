@@ -1,7 +1,66 @@
 ﻿const express = require("express");
 const router = express.Router();
 const Account = require("../models/Account");
+const User = require("../models/User");
 const { protect, signToken } = require("../middleware/auth");
+
+// POST /api/auth/register - Dang ky tai khoan va tao User
+router.post("/register", async (req, res) => {
+  try {
+    const { fullName, email, username, password } = req.body;
+    if (!fullName || !username || !password) {
+      return res.status(400).json({ error: "Họ tên, username và mật khẩu là bắt buộc." });
+    }
+    
+    // Check exist
+    const existing = await Account.findOne({ username: username.toLowerCase() });
+    if (existing) {
+      return res.status(400).json({ error: "Username đã tồn tại." });
+    }
+
+    // Tao User truoc
+    const newUser = new User({
+      fullName,
+      email: email || "",
+    });
+    await newUser.save();
+
+    // Tao Account
+    const newAccount = new Account({
+      fullName,
+      email: email || "",
+      username,
+      password,
+      role: "user",
+      linkedUser: newUser._id,
+      lastLogin: new Date()
+    });
+    await newAccount.save();
+
+    // Auto login
+    const token = signToken(newAccount._id);
+    res.json({
+      message: "Đăng ký thành công.",
+      token,
+      user: {
+        id: newAccount._id,
+        username: newAccount.username,
+        fullName: newAccount.fullName,
+        email: newAccount.email,
+        role: newAccount.role,
+        lastLogin: newAccount.lastLogin,
+      }
+    });
+
+  } catch (err) {
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(val => val.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
@@ -33,6 +92,7 @@ router.post("/login", async (req, res) => {
         fullName: account.fullName,
         email: account.email,
         role: account.role,
+        linkedUser: account.linkedUser,
         lastLogin: account.lastLogin,
       },
     });
@@ -93,4 +153,5 @@ router.post("/check-password", (req, res) => {
   res.json({ valid, score, strength, checks });
 });
 module.exports = router;
+
 

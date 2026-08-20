@@ -1,16 +1,150 @@
-/* ─── accounts.js — Quản lý Tài khoản & Phê duyệt (Admin) ──────────────── */
+/* ─── accounts.js — Quản lý Tài khoản & Phê duyệt ─── */
 
 async function loadAccountsSection() {
   await loadSharedData();
-  loadAccounts();
-  if (state.currentUser?.role === 'admin') {
+  const isAdmin = state.currentUser?.role === 'admin';
+  const adminView = document.getElementById('accounts-admin-view');
+  const userView = document.getElementById('accounts-user-view');
+
+  if (isAdmin) {
+    if(adminView) adminView.style.display = 'block';
+    if(userView) userView.style.display = 'none';
+    if(adminView) renderAdminView(adminView);
+    loadAccounts();
     loadApprovalPanel();
+  } else {
+    if(adminView) adminView.style.display = 'none';
+    if(userView) userView.style.display = 'block';
+    if(userView) renderUserView(userView);
+    loadUserProfile();
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Bảng danh sách tài khoản
-// ══════════════════════════════════════════════════════════════════════════════
+function renderAdminView(container) {
+  container.innerHTML = `
+    <div class="page-heading">
+      <div>
+        <div class="page-heading__title">Quản lý Tài khoản (Admin)</div>
+        <div class="page-heading__sub">Tạo, sửa, phân quyền và kiểm soát tài khoản người dùng</div>
+      </div>
+      <button class="btn btn-primary" id="btnAddAccount">Tạo tài khoản mới</button>
+    </div>
+
+    <div class="grid-4 mb-6">
+      <div class="kpi-card"><div class="kpi-card__label">Tổng tài khoản</div><div class="kpi-card__value" id="accTotal">--</div></div>
+      <div class="kpi-card"><div class="kpi-card__label">Quản trị viên</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--accent-2)" id="accAdmins">--</div></div>
+      <div class="kpi-card"><div class="kpi-card__label">Người dùng</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--cyan)" id="accUsers">--</div></div>
+      <div class="kpi-card"><div class="kpi-card__label">Đã khóa (Banned)</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--red)" id="accInactive">--</div></div>
+    </div>
+
+    <div id="approvalPanel" class="mb-6"></div>
+    <div id="accountsTable"><div class="loading-spinner"><div class="spinner"></div>Đang tải...</div></div>
+  `;
+  document.getElementById('btnAddAccount')?.addEventListener('click', () => {
+      modal.open({
+          title: 'Tạo tài khoản mới', body: getAccountFormHtml({}, false), confirmText: 'Tạo tài khoản', wide: true,
+          onConfirm: async () => {
+            const pw = document.getElementById('f-acc-password')?.value || '';
+            const pwErr = validatePw(pw);
+            if (pwErr) return showToast(pwErr, 'error');
+            const un = document.getElementById('f-acc-username').value.trim();
+            if (!/^[a-z0-9_]+$/.test(un)) return showToast('Username chỉ dùng chữ thường, số và dấu gạch dưới', 'error');
+            const body = {
+              fullName:   document.getElementById('f-acc-name').value.trim(),
+              email:      document.getElementById('f-acc-email').value.trim(),
+              username:   un,
+              password:   pw,
+              role:       document.getElementById('f-acc-role').value,
+              active:     document.getElementById('f-acc-active').value === 'true',
+              linkedUser: document.getElementById('f-acc-linked').value || null,
+              adminNote:  document.getElementById('f-acc-note').value.trim(),
+            };
+            if (!body.fullName) return showToast('Vui lòng nhập họ tên', 'error');
+            if (!body.username) return showToast('Vui lòng nhập username', 'error');
+            try {
+              modal.setLoading(true);
+              await api.accounts.create(body);
+              modal.close(); showToast('Đã tạo tài khoản thành công'); loadAccounts();
+            } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+            finally { modal.setLoading(false); }
+          },
+        });
+  });
+}
+
+function renderUserView(container) {
+  container.innerHTML = `
+    <div class="page-heading">
+      <div>
+        <div class="page-heading__title">Hồ sơ & Tài khoản cá nhân</div>
+        <div class="page-heading__sub">Thông tin cá nhân, cài đặt bảo mật và tiến độ công việc của bạn</div>
+      </div>
+      <button class="btn btn-secondary" onclick="showChangePasswordModal()">Đổi mật khẩu</button>
+    </div>
+
+    <div class="grid-4 mb-6">
+      <div class="kpi-card"><div class="kpi-card__label">Dự án tham gia</div><div class="kpi-card__value" id="usrProjects">--</div></div>
+      <div class="kpi-card"><div class="kpi-card__label">Task hoàn thành</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--green)" id="usrTasks">--</div></div>
+      <div class="kpi-card"><div class="kpi-card__label">Tổng giờ làm</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--accent-2)" id="usrHours">--</div></div>
+      <div class="kpi-card"><div class="kpi-card__label">Điểm hiệu suất</div><div class="kpi-card__value" style="-webkit-text-fill-color:var(--cyan)" id="usrScore">--</div></div>
+    </div>
+
+    <div class="card mb-6">
+      <div class="card__header"><span class="card__title">Thông tin Hồ sơ</span></div>
+      <div class="card__body" id="userProfileBody">
+        <div class="loading-spinner"><div class="spinner"></div>Đang tải thông tin...</div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadUserProfile() {
+  const container = document.getElementById('userProfileBody');
+  try {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('hrm_token') }
+    });
+    const acc = await res.json();
+    
+    const tasks = await api.tasks.list();
+    const myTasks = tasks.filter(t => t.assignee?._id === acc.linkedUser?._id);
+    const completedTasks = myTasks.filter(t => t.status === 'Completed');
+    
+    // Check joined projects
+    const projects = await api.projects.list();
+    const joinedProjects = projects.filter(p => p.members && p.members.some(m => m._id === acc.linkedUser?._id));
+    
+    document.getElementById('usrProjects').textContent = joinedProjects.length || 0;
+    document.getElementById('usrTasks').textContent = completedTasks.length || 0;
+    
+    const logs = await api.timelogs.list();
+    const myLogs = logs.filter(l => l.staff?._id === acc.linkedUser?._id && l.approvalStatus === 'approved');
+    const hours = myLogs.reduce((sum, l) => sum + (l.hoursWorked || 0), 0);
+    document.getElementById('usrHours').textContent = hours.toFixed(1);
+    
+    document.getElementById('usrScore').textContent = acc.linkedUser?.performanceScore || 'N/A';
+    
+    container.innerHTML = `
+      <div style="display:flex;gap:24px;align-items:center;">
+        ${mkAvatar(acc.fullName, 'lg')}
+        <div>
+          <h3 style="color:#f1f5f9;margin-bottom:8px;font-size:20px">${acc.fullName}</h3>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Chức danh:</strong> ${acc.linkedUser?.position || 'Chưa cập nhật'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Email:</strong> ${acc.email || 'Chưa cập nhật'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Phòng ban:</strong> ${acc.linkedUser?.department?.name || 'Chưa phân bổ'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Đăng nhập lần cuối:</strong> ${acc.lastLogin ? formatDateTime(acc.lastLogin) : 'Chưa đăng nhập'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Số lần đăng nhập:</strong> ${acc.loginCount || 0}</p>
+          <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            ${(acc.linkedUser?.skills || []).map(s => `<span class="badge badge-active">${s}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    if(container) container.innerHTML = `<div class="empty-state">Lỗi: ${err.message}</div>`;
+  }
+}
+
 async function loadAccounts() {
   const container = document.getElementById('accountsTable');
   if (!container) return;
@@ -62,14 +196,14 @@ function renderAccountsTable(accounts) {
           const isMe      = acc._id === currentUser.id;
           const roleLabel = acc.role === 'admin' ? 'Quản trị viên' : 'Người dùng';
           const roleCls   = acc.role === 'admin' ? 'badge-urgent' : 'badge-active';
-          const statusLabel = acc.active ? 'Hoạt động' : 'Vô hiệu';
+          const statusLabel = acc.active ? 'Hoạt động' : 'Đã Khóa';
           const statusCls   = acc.active ? 'badge-active' : 'badge-hold';
           return `<tr class="${!acc.active ? 'row-inactive' : ''}">
             <td>
               <div class="td-name">
                 ${mkAvatar(acc.fullName, 'sm')}
                 <div>
-                  <div>${acc.fullName} ${isMe ? '<span style="font-size:10px;color:var(--accent-3)">(Bạn)</span>' : ''}</div>
+                  <div style="cursor:pointer;color:var(--cyan)" onclick="showAccountProfile('${acc._id}')">${acc.fullName} ${isMe ? '<span style="font-size:10px;color:var(--accent-3)">(Bạn)</span>' : ''}</div>
                   <div class="td-sub">Tạo: ${formatDate(acc.createdAt)}</div>
                 </div>
               </div>
@@ -84,11 +218,11 @@ function renderAccountsTable(accounts) {
             <td>
               <div style="display:flex;gap:4px;flex-wrap:wrap">
                 <button class="btn btn-ghost btn-xs" onclick="editAccount('${acc._id}')">Sửa</button>
-                <button class="btn btn-secondary btn-xs" onclick="resetAccountPassword('${acc._id}', '${acc.username}')">Đặt lại MK</button>
+                ${acc.role !== 'admin' ? `<button class="btn btn-secondary btn-xs" onclick="resetAccountPassword('${acc._id}', '${acc.username}')">Đặt lại MK</button>` : ''}
                 ${!acc.active
-                  ? `<button class="btn btn-xs" style="background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.3)" onclick="toggleAccountActive('${acc._id}', true)">Kích hoạt</button>`
-                  : !isMe && acc.username !== 'admin' ? `<button class="btn btn-xs" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.3)" onclick="toggleAccountActive('${acc._id}', false)">Vô hiệu hoá</button>` : ''}
-                ${!isMe && acc.username !== 'admin' ? `<button class="btn btn-danger btn-xs" onclick="deleteAccount('${acc._id}', '${acc.username}')">Xoá</button>` : ''}
+                  ? `<button class="btn btn-xs" style="background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.3)" onclick="toggleAccountActive('${acc._id}', true)">Unban</button>`
+                  : !isMe && acc.username !== 'admin' ? `<button class="btn btn-xs" style="background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.3)" onclick="toggleAccountActive('${acc._id}', false)">Ban</button>` : ''}
+                ${!isMe && acc.username !== 'admin' ? `<button class="btn btn-danger btn-xs" onclick="deleteAccount('${acc._id}', '${acc.username}')">Xóa</button>` : ''}
               </div>
             </td>
           </tr>`;
@@ -98,28 +232,61 @@ function renderAccountsTable(accounts) {
   </div>`;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Bảng phê duyệt (Admin) — Hiển thị task & timelog chờ duyệt
-// ══════════════════════════════════════════════════════════════════════════════
 async function loadApprovalPanel() {
   const panel = document.getElementById('approvalPanel');
   if (!panel) return;
   panel.innerHTML = '<div class="loading-spinner"><div class="spinner"></div>Đang tải yêu cầu chờ duyệt...</div>';
   try {
-    const [pendingTasks, pendingLogs, tlStats] = await Promise.all([
+    const [pendingTasks, pendingLogs, pendingRequests, tlStats] = await Promise.all([
       api.tasks.pendingApproval(),
       api.timelogs.pending(),
+      api.projects.pendingRequests(),
       api.timelogs.approvalStats(),
     ]);
 
-    // Cập nhật badge
     const badge = document.getElementById('approvalBadge');
-    const total  = (pendingTasks.length + pendingLogs.length);
+    const total = (pendingTasks.length + pendingLogs.length + (pendingRequests ? pendingRequests.length : 0));
     if (badge) badge.textContent = total > 0 ? total : '';
 
     let html = '';
 
-    // ── Pending Tasks ──────────────────────────────────────────────────────
+    // 1. Project Join/Leave requests
+    if (pendingRequests && pendingRequests.length > 0) {
+      html += `
+      <div class="approval-panel" style="margin-bottom:20px">
+        <div class="approval-panel__title">
+          <span>Yêu cầu tham gia / rời dự án (${pendingRequests.length})</span>
+          <span style="font-size:11px;font-weight:400;color:var(--text-muted)">Nhân viên gửi yêu cầu tham gia hoặc rời dự án</span>
+        </div>
+        ${pendingRequests.map(r => {
+          const isJoin = r.type === 'join';
+          const typeBadge = isJoin ? '<span class="badge badge-active">Xin tham gia</span>' : '<span class="badge badge-urgent">Xin rời</span>';
+          return `
+          <div class="approval-item">
+            ${r.user ? mkAvatar(r.user.fullName, 'sm') : '<div class="avatar avatar-sm" style="background:#475569">?</div>'}
+            <div class="approval-item__info">
+              <div class="approval-item__name">
+                ${r.user?.fullName || r.account?.fullName || 'Nhân viên'} &mdash; <strong style="color:var(--accent-3)">${r.project?.name || 'Dự án'}</strong>
+              </div>
+              <div class="approval-item__sub">
+                ${typeBadge} &middot;
+                ${r.user?.department?.name || r.user?.position || ''} &middot;
+                Gửi lúc: ${formatDateTime(r.createdAt)}
+                ${r.reason ? ` &middot; <em>Lý do: "${r.reason}"</em>` : ''}
+              </div>
+            </div>
+            <div class="approval-item__actions">
+              <button class="btn btn-xs" style="background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3)"
+                onclick="approveProjectRequest('${r._id}','approved')">Duyệt</button>
+              <button class="btn btn-xs" style="background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3)"
+                onclick="approveProjectRequest('${r._id}','rejected')">Từ chối</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    // 2. Task completion requests
     if (pendingTasks.length > 0) {
       html += `
       <div class="approval-panel" style="margin-bottom:20px">
@@ -150,7 +317,7 @@ async function loadApprovalPanel() {
       </div>`;
     }
 
-    // ── Pending TimeLogs ───────────────────────────────────────────────────
+    // 3. Timelogs requests
     const statsHtml = `
     <div style="display:flex;gap:12px;margin-bottom:14px;font-size:12px">
       <span style="color:var(--yellow)">Chờ duyệt: <strong>${tlStats.pending}</strong></span>
@@ -188,10 +355,10 @@ async function loadApprovalPanel() {
       </div>`;
     }
 
-    if (!pendingTasks.length && !pendingLogs.length) {
+    if (!pendingTasks.length && !pendingLogs.length && (!pendingRequests || !pendingRequests.length)) {
       html = `<div class="empty-state" style="padding:24px">
         <div class="empty-state__title" style="color:var(--green)">Không có yêu cầu chờ duyệt</div>
-        <div class="empty-state__sub">Tất cả công việc và giờ làm đã được xử lý</div>
+        <div class="empty-state__sub">Tất cả yêu cầu dự án, công việc và giờ làm đã được xử lý</div>
       </div>`;
     }
 
@@ -201,7 +368,34 @@ async function loadApprovalPanel() {
   }
 }
 
-// ── Duyệt task ────────────────────────────────────────────────────────────────
+async function approveProjectRequest(id, action) {
+  if (action === 'rejected') {
+    modal.open({
+      title: 'Lý do từ chối yêu cầu',
+      body: `<div class="form-group"><label class="form-label">Ghi chú phản hồi</label><textarea id="f-reject-proj-req" class="form-control" placeholder="Nêu lý do từ chối..." style="height:80px"></textarea></div>`,
+      confirmText: 'Xác nhận từ chối',
+      onConfirm: async () => {
+        const note = document.getElementById('f-reject-proj-req').value;
+        try {
+          modal.setLoading(true);
+          await api.projects.approveRequest(id, { action: 'rejected', note });
+          modal.close();
+          showToast('Đã từ chối yêu cầu dự án');
+          loadApprovalPanel();
+        } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+        finally { modal.setLoading(false); }
+      }
+    });
+    return;
+  }
+
+  try {
+    await api.projects.approveRequest(id, { action: 'approved' });
+    showToast('Đã phê duyệt yêu cầu dự án thành công');
+    loadApprovalPanel();
+  } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+}
+
 async function approveTask(id, action) {
   if (action === 'rejected') {
     modal.open({
@@ -229,7 +423,6 @@ async function approveTask(id, action) {
   } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
 }
 
-// ── Duyệt timelog ─────────────────────────────────────────────────────────────
 async function approveTimelog(id, action) {
   if (action === 'rejected') {
     modal.open({
@@ -254,9 +447,6 @@ async function approveTimelog(id, action) {
   } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Password Strength Checker
-// ══════════════════════════════════════════════════════════════════════════════
 function renderPwStrength(pw, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -264,7 +454,7 @@ function renderPwStrength(pw, containerId) {
     length:  pw.length >= 8,
     upper:   /[A-Z]/.test(pw),
     number:  /[0-9]/.test(pw),
-    special: /[!@#$%^&*()\-_,.?":{}|<>]/.test(pw),
+    special: /[!@#$%^&*()-_,.?":{}|<>]/.test(pw),
   };
   const score    = Object.values(checks).filter(Boolean).length;
   const strength = score <= 1 ? 'weak' : score === 2 ? 'fair' : score === 3 ? 'good' : 'strong';
@@ -287,9 +477,6 @@ function renderPwStrength(pw, containerId) {
   </div>`;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Form Tạo / Sửa Tài khoản (với password strength)
-// ══════════════════════════════════════════════════════════════════════════════
 function getAccountFormHtml(acc = {}, isEdit = false) {
   const userOptions = (state.users || []).map(u =>
     `<option value="${u._id}" ${acc.linkedUser?._id === u._id ? 'selected' : ''}>${u.fullName}</option>`
@@ -351,7 +538,6 @@ function getAccountFormHtml(acc = {}, isEdit = false) {
   </div>`;
 }
 
-// Yêu cầu mật khẩu hợp lệ
 function validatePw(pw) {
   if (!pw || pw.length < 8)             return 'Mật khẩu phải có ít nhất 8 ký tự';
   if (!/[A-Z]/.test(pw))               return 'Cần ít nhất 1 chữ hoa (A-Z)';
@@ -360,41 +546,9 @@ function validatePw(pw) {
   return null;
 }
 
-document.getElementById('btnAddAccount')?.addEventListener('click', () => {
-  modal.open({
-    title: 'Tạo tài khoản mới', body: getAccountFormHtml({}, false), confirmText: 'Tạo tài khoản', wide: true,
-    onConfirm: async () => {
-      const pw = document.getElementById('f-acc-password')?.value || '';
-      const pwErr = validatePw(pw);
-      if (pwErr) return showToast(pwErr, 'error');
-      const un = document.getElementById('f-acc-username').value.trim();
-      if (!/^[a-z0-9_]+$/.test(un)) return showToast('Username chỉ dùng chữ thường, số và dấu gạch dưới', 'error');
-      const body = {
-        fullName:   document.getElementById('f-acc-name').value.trim(),
-        email:      document.getElementById('f-acc-email').value.trim(),
-        username:   un,
-        password:   pw,
-        role:       document.getElementById('f-acc-role').value,
-        active:     document.getElementById('f-acc-active').value === 'true',
-        linkedUser: document.getElementById('f-acc-linked').value || null,
-        adminNote:  document.getElementById('f-acc-note').value.trim(),
-      };
-      if (!body.fullName) return showToast('Vui lòng nhập họ tên', 'error');
-      if (!body.username) return showToast('Vui lòng nhập username', 'error');
-      try {
-        modal.setLoading(true);
-        await api.accounts.create(body);
-        modal.close(); showToast('Đã tạo tài khoản thành công'); loadAccounts();
-      } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
-      finally { modal.setLoading(false); }
-    },
-  });
-});
-
 async function editAccount(id) {
   try {
-    const accounts = await api.accounts.list();
-    const acc = accounts.find(a => a._id === id);
+    const acc = _allAccounts.find(a => a._id === id);
     if (!acc) return showToast('Không tìm thấy tài khoản', 'error');
     modal.open({
       title: 'Cập nhật tài khoản', body: getAccountFormHtml(acc, true), confirmText: 'Cập nhật', wide: true,
@@ -475,7 +629,6 @@ function deleteAccount(id, username) {
   });
 }
 
-// ── Đổi mật khẩu của chính mình ──────────────────────────────────────────────
 function showChangePasswordModal() {
   modal.open({
     title: 'Đổi mật khẩu',
@@ -505,4 +658,58 @@ function showChangePasswordModal() {
       finally { modal.setLoading(false); }
     },
   });
+}
+
+async function showAccountProfile(accountId) {
+  try {
+    modal.setLoading(true);
+    const acc = _allAccounts.find(a => a._id === accountId);
+    if (!acc) return showToast('Không tìm thấy tài khoản', 'error');
+    
+    let html = `
+      <div style="display:flex;gap:24px;align-items:center;margin-bottom:24px;">
+        ${mkAvatar(acc.fullName, 'lg')}
+        <div>
+          <h3 style="color:#f1f5f9;margin-bottom:8px;font-size:20px">${acc.fullName}</h3>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Username:</strong> ${acc.username}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Email:</strong> ${acc.email || '--'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Vai trò:</strong> ${acc.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</p>
+          <p style="color:#94a3b8;font-size:14px;margin-bottom:4px"><strong style="color:#cbd5e1">Đăng nhập lần cuối:</strong> ${acc.lastLogin ? formatDateTime(acc.lastLogin) : 'Chưa đăng nhập'}</p>
+        </div>
+      </div>
+    `;
+    
+    if (acc.linkedUser) {
+      const u = acc.linkedUser;
+      html += `
+        <div class="card" style="background:rgba(255,255,255,0.02)">
+          <div class="card__header"><span class="card__title">Hồ sơ Nhân viên Liên kết</span></div>
+          <div class="card__body">
+            <div class="grid-2" style="gap:16px;">
+              <div>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:8px"><strong style="color:#cbd5e1">Phòng ban:</strong> ${u.department?.name || '--'}</p>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:8px"><strong style="color:#cbd5e1">Chức vụ:</strong> ${u.position || '--'}</p>
+              </div>
+              <div>
+                <p style="color:#94a3b8;font-size:13px;margin-bottom:8px"><strong style="color:#cbd5e1">Kỹ năng:</strong> ${(u.skills||[]).join(', ') || '--'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      html += `<div style="color:var(--yellow);font-size:13px;padding:12px;background:rgba(251,191,36,0.1);border-radius:8px">Tài khoản này chưa liên kết với hồ sơ nhân viên nào.</div>`;
+    }
+    
+    modal.open({
+      title: 'Thông tin Tài khoản',
+      body: html,
+      hideFooter: true,
+      wide: true
+    });
+  } catch (err) {
+    showToast('Lỗi: ' + err.message, 'error');
+  } finally {
+    modal.setLoading(false);
+  }
 }
