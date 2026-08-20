@@ -2,6 +2,7 @@
 const router = express.Router();
 const Account = require("../models/Account");
 const User = require("../models/User");
+const { protect, signToken } = require("../middleware/auth");
 
 // POST /api/auth/register - Dang ky tai khoan va tao User
 router.post("/register", async (req, res) => {
@@ -60,7 +61,6 @@ router.post("/register", async (req, res) => {
   }
 });
 
-const { protect, signToken } = require("../middleware/auth");
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
